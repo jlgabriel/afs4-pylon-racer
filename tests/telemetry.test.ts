@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ForeFlightAssembler, parseXatt, parseXgps } from "../src/core/telemetry/foreflight";
-import { LineSplitter, parseReaderLine } from "../src/core/telemetry/reader";
+import { LineSplitter, compassFromReader, parseReaderLine } from "../src/core/telemetry/reader";
 import { RateMeter } from "../src/core/telemetry/rate";
 import { isNullIsland } from "../src/core/race/fix";
 
@@ -42,10 +42,20 @@ describe("AeroflyReader.dll", () => {
     // Same airport elevation the UDP feed reports (47.4 m): the DLL's altitude is in meters.
     expect(s.fix.altMslM).toBeCloseTo(47.44, 2);
     expect(s.fix.aglM).toBeCloseTo(1.25, 2);
-    expect(s.fix.headingDeg).toBeCloseTo(20.13, 1);
+    // Same instant as the XGPS/XATT capture above: the UDP said 69.9°.
+    expect(s.fix.headingDeg).toBeCloseTo(69.87, 1);
     expect(s.fix.rollDeg).toBeCloseTo(-0.224, 2);
     expect(s.aircraft).toBe("c172");
     expect(s.sourceHz).toBe(40);
+  });
+
+  it("turns its east-based, counter-clockwise heading into a compass heading", () => {
+    // Non-cardinal and cardinal cases: a sign error cannot hide behind a symmetric angle.
+    expect(compassFromReader(0)).toBeCloseTo(90, 9); // east
+    expect(compassFromReader(Math.PI / 2)).toBeCloseTo(0, 9); // north
+    expect(compassFromReader(Math.PI)).toBeCloseTo(270, 9); // west
+    expect(compassFromReader((20 * Math.PI) / 180)).toBeCloseTo(70, 9);
+    expect(compassFromReader((-30 * Math.PI) / 180)).toBeCloseTo(120, 9);
   });
 
   it("normalizes a longitude reported in [0, 2π)", () => {

@@ -4,6 +4,10 @@
 // Units as MEASURED in AFS4, which differ from the DLL's own README: latitude/longitude and angles
 // in RADIANS; `altitude` and `height` in METERS (not feet); speeds in m/s. Longitude may come in
 // [0, 2π) and is normalized to ±180°. `aircraft_name` is the aircraft's folder id (e.g. "c172").
+//
+// `true_heading` is NOT a compass heading: it is a math angle, counter-clockwise from east, so
+// compass = 90° − true_heading (same instant on a runway: UDP heading 69.9°, DLL 20.1°). The sign
+// lives only in compassFromReader(). Pitch and bank match the UDP's signs as they are.
 // It runs at ~40 Hz with an aircraft loaded, ~10 Hz in the menus (with lat/lon 0).
 import { z } from "zod";
 import { wrap180, wrap360 } from "../geo/geo";
@@ -34,6 +38,11 @@ export interface ReaderSample {
 
 const DEG = 180 / Math.PI;
 
+/** The DLL's heading (radians, counter-clockwise from east) as a compass heading in degrees. */
+export function compassFromReader(rad: number): number {
+  return wrap360(90 - rad * DEG);
+}
+
 /** Parse one JSON line. `t` is the receive time in seconds. Null for anything unusable. */
 export function parseReaderLine(line: string, t: number): ReaderSample | null {
   let json: unknown;
@@ -45,7 +54,7 @@ export function parseReaderLine(line: string, t: number): ReaderSample | null {
   const r = readerLine.safeParse(json);
   if (!r.success || r.data.data_valid !== 1) return null;
   const d = r.data;
-  const heading = wrap360(d.true_heading * DEG);
+  const heading = compassFromReader(d.true_heading);
   const name = d.aircraft_name && d.aircraft_name !== "Unknown" ? d.aircraft_name : null;
   return {
     fix: {
