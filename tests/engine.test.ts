@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { demoFlight } from "../src/core/demo/demoFlight";
 import { RaceEngine, type RaceEvent } from "../src/core/race/engine";
-import { fixAt, makeCourse, straightCourse } from "./helpers";
+import type { Fix } from "../src/core/race/fix";
+import { fixAt, makeCourse, straightCourse, type GateSpec } from "./helpers";
 
 const kinds = (events: RaceEvent[]): string[] => events.map((e) => e.kind);
 
@@ -202,9 +203,163 @@ describe("turn pylons", () => {
     expect(s.passes[1]!.offsetM).toBeCloseTo(100, 0);
   });
 
-  it("is missed when flown on the wrong side", () => {
+  it("is cut when flown on the wrong side: the step counts, with the turn-cut penalty", () => {
     const eng = new RaceEngine(withTurn);
     fly(eng, around(-100)); // pylon on the right
+    const s = eng.snapshot();
+    expect(s.status).toBe("finished");
+    expect(s.penalties).toEqual([expect.objectContaining({ kind: "turn-cut", gateIndex: 1, seconds: 10 })]);
+    expect(s.passes.map((p) => p.gateIndex)).toEqual([0, 1, 2]);
+  });
+
+  it("is missed, not cut, when it is not rounded at all", () => {
+    const eng = new RaceEngine(withTurn);
+    fly(eng, around(400)); // wide of the 300 m pass line
     expect(eng.snapshot().penalties.map((p) => p.kind)).toEqual(["missed-gate"]);
   });
 });
+
+/** Northbound through start (y=-500), the judged gate (y=0) and the finish (y=500), on the axis. */
+function judged(gate: Partial<GateSpec> & Pick<GateSpec, "type">, rules: Record<string, unknown> = {}) {
+  return makeCourse(
+    [
+      { type: "start", x: 0, y: -500, heading: 0 },
+      { x: 0, y: 0, heading: 0, ...gate },
+      { type: "finish", x: 0, y: 500, heading: 0 },
+    ],
+    { rules },
+  );
+}
+
+/** Fly x = const northbound at 1 Hz, with `over` applied around the middle gate (y = -100 … 100). */
+function flyAxis(eng: RaceEngine, over: Partial<Fix>, x = 0): RaceEvent[] {
+  const events: RaceEvent[] = [];
+  for (let i = 0; i < 14; i++) {
+    const y = -640 + 100 * i;
+    events.push(...eng.update(fixAt(x, y, i, Math.abs(y) <= 100 ? over : {})));
+  }
+  return events;
+}
+
+const penaltyKinds = (eng: RaceEngine): string[] => eng.snapshot().penalties.map((p) => p.kind);
+
+describe("attitude gates", () => {
+  it("a level gate passes with the wings level and penalizes a bank past the tolerance", () => {
+    const ok = new RaceEngine(judged({ type: "level" }));
+    flyAxis(ok, { rollDeg: 8 });
+    expect(penaltyKinds(ok)).toEqual([]);
+
+    const banked = new RaceEngine(judged({ type: "level" }));
+    flyAxis(banked, { rollDeg: -25 });
+    expect(banked.snapshot().penalties).toEqual([
+      expect.objectContaining({ kind: "attitude", gateIndex: 1, seconds: 2, measured: expect.closeTo(-25, 3) }),
+    ]);
+  });
+
+  it("a knife-edge gate wants 90° of bank either way, within its tolerance", () => {
+    for (const roll of [90, -90, 78, -102]) {
+      const eng = new RaceEngine(judged({ type: "knife" }));
+      flyAxis(eng, { rollDeg: roll });
+      expect(penaltyKinds(eng)).toEqual([]);
+    }
+    const flat = new RaceEngine(judged({ type: "knife" }));
+    flyAxis(flat, { rollDeg: 60 });
+    expect(penaltyKinds(flat)).toEqual(["attitude"]);
+  });
+
+  it("the tolerance comes from the course", () => {
+    const strict = new RaceEngine(judged({ type: "level" }, { levelToleranceDeg: 5, attitudePenaltyS: 4 }));
+    flyAxis(strict, { rollDeg: 8 });
+    expect(strict.snapshot().penalties).toEqual([expect.objectContaining({ kind: "attitude", seconds: 4 })]);
+  });
+
+  it("a plain gate does not judge the bank", () => {
+    const eng = new RaceEngine(judged({ type: "gate" }));
+    flyAxis(eng, { rollDeg: 60 });
+    expect(penaltyKinds(eng)).toEqual([]);
+  });
+});
+
+describe("height", () => {
+  it("uses the sim's height above the ground when there is one", () => {
+    const eng = new RaceEngine(judged({ type: "gate", top: 30, ground: 1400 }));
+    flyAxis(eng, { aglM: 45, altMslM: 1420 }); // AGL wins over MSL − DEM (20 m)
+    expect(eng.snapshot().penalties).toEqual([
+      expect.objectContaining({ kind: "too-high", gateIndex: 1, seconds: 2, measured: expect.closeTo(45, 3) }),
+    ]);
+  });
+
+  it("falls back to MSL minus the gate's terrain (UDP)", () => {
+    const high = new RaceEngine(judged({ type: "gate", top: 30, ground: 1400 }));
+    flyAxis(high, { altMslM: 1440 });
+    expect(penaltyKinds(high)).toEqual(["too-high"]);
+
+    const low = new RaceEngine(judged({ type: "gate", top: 30, ground: 1400 }));
+    flyAxis(low, { altMslM: 1425 });
+    expect(penaltyKinds(low)).toEqual([]);
+  });
+
+  it("never penalizes a height it cannot know, nor a gate without a top", () => {
+    const unknown = new RaceEngine(judged({ type: "gate", top: 30 }));
+    flyAxis(unknown, { altMslM: 5000 });
+    expect(penaltyKinds(unknown)).toEqual([]);
+
+    const noTop = new RaceEngine(judged({ type: "gate", ground: 1400 }));
+    flyAxis(noTop, { altMslM: 5000 });
+    expect(penaltyKinds(noTop)).toEqual([]);
+  });
+});
+
+describe("pylon hits", () => {
+  // The middle gate is 80 m wide: its pylons stand at x = ±40.
+  it("passing within the hit radius of a pylon, below its top, is a hit", () => {
+    const eng = new RaceEngine(judged({ type: "gate", ground: 1400 }));
+    flyAxis(eng, { altMslM: 1420 }, 37); // 3 m from the right pylon, 20 m up
+    expect(eng.snapshot().penalties).toEqual([
+      expect.objectContaining({ kind: "pylon-hit", gateIndex: 1, seconds: 3, measured: expect.closeTo(3, 1) }),
+    ]);
+  });
+
+  it("above the pylon, or clear of the radius, is not", () => {
+    const over = new RaceEngine(judged({ type: "gate", ground: 1400 }));
+    flyAxis(over, { altMslM: 1430 }, 37); // 30 m up, pylons are 25 m
+    expect(penaltyKinds(over)).toEqual([]);
+
+    const clear = new RaceEngine(judged({ type: "gate", ground: 1400 }));
+    flyAxis(clear, { altMslM: 1420 }, 30); // 10 m from the pylon
+    expect(penaltyKinds(clear)).toEqual([]);
+  });
+
+  it("counts a hit when the height is unknown: racing is low", () => {
+    const eng = new RaceEngine(judged({ type: "gate" }));
+    flyAxis(eng, {}, 37);
+    expect(penaltyKinds(eng)).toEqual(["pylon-hit"]);
+  });
+
+  it("finds a hit between samples, off the gate line", () => {
+    // After the start, dog-leg back south-west through the start's left pylon (x = -40, y = -500).
+    const eng = new RaceEngine(judged({ type: "gate" }));
+    eng.update(fixAt(0, -600, 0));
+    eng.update(fixAt(0, -400, 1)); // start
+    eng.update(fixAt(-38, -480, 2));
+    eng.update(fixAt(-42, -520, 3)); // the segment passes ~0 m from the pylon
+    expect(eng.snapshot().penalties).toEqual([expect.objectContaining({ kind: "pylon-hit", gateIndex: 0 })]);
+  });
+
+  it("is penalized once per pylon and lap", () => {
+    const eng = new RaceEngine(judged({ type: "gate" }));
+    eng.update(fixAt(-37, -600, 0));
+    eng.update(fixAt(-37, -400, 1)); // through the start, 3 m from its left pylon
+    expect(penaltyKinds(eng)).toEqual(["pylon-hit"]);
+    eng.update(fixAt(-37, -600, 2)); // back past it, and again (the start is behind: no wrong-way)
+    eng.update(fixAt(-37, -400, 3));
+    expect(penaltyKinds(eng)).toEqual(["pylon-hit"]);
+  });
+
+  it("a turn pylon can be hit too", () => {
+    const eng = new RaceEngine(judged({ type: "turn", width: 300, turnSide: "left" }));
+    flyAxis(eng, {}, 2); // 2 m right of the pylon: rounded on the correct side, but hit
+    expect(penaltyKinds(eng)).toEqual(["pylon-hit"]);
+  });
+});
+

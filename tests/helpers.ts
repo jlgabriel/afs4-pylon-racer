@@ -13,6 +13,10 @@ export interface GateSpec {
   heading: number;
   width?: number;
   turnSide?: "left" | "right";
+  /** Highest allowed pass above the terrain, m. */
+  top?: number;
+  /** Terrain elevation at the gate, m MSL. */
+  ground?: number;
 }
 
 export function makeCourse(gates: GateSpec[], extra: Record<string, unknown> = {}): Course {
@@ -30,6 +34,8 @@ export function makeCourse(gates: GateSpec[], extra: Record<string, unknown> = {
       widthM: g.width ?? 80,
       headingDeg: g.heading,
       turnSide: g.turnSide ?? null,
+      topM: g.top ?? null,
+      groundElevM: g.ground ?? null,
     })),
     ...extra,
   });

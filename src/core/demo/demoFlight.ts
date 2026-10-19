@@ -2,6 +2,8 @@
 // tests, and for screenshots. It flies straight lines through the gate centers in race order, at a
 // constant speed, with a lead-in before the start and a lead-out after the end; the bank angle is the
 // coordinated-turn bank for the heading change, so attitude-dependent screens have something to show.
+// It flies by the rules, so a demo run is clean: wings level through level gates, knife edge through
+// knife gates, turn pylons rounded on their side, and under every gate's top.
 import { raceSequence, type Course } from "../course/course";
 import { destination, fromLocal, haversine, initialBearing, toLocal, wrap180, type LonLat } from "../geo/geo";
 import type { Fix } from "../race/fix";
@@ -16,6 +18,15 @@ export interface DemoOptions {
 }
 
 const G = 9.80665;
+/** How far either side of a level or knife gate the demo holds the attitude. */
+const ATTITUDE_ZONE_M = 60;
+
+/** Where the demo flies through a gate: its center, or beside a turn pylon on the side to pass. */
+function aimPoint(g: Course["gates"][number]): LonLat {
+  if (g.type !== "turn") return g.center;
+  const side = g.turnSide === "left" ? 90 : -90; // keep it on the left = fly to its right
+  return destination(g.center, Math.min(g.widthM / 2, 60), g.headingDeg + side);
+}
 
 export function demoFlight(course: Course, opts: DemoOptions = {}): Fix[] {
   const speed = opts.speedMs ?? 80;
@@ -26,7 +37,7 @@ export function demoFlight(course: Course, opts: DemoOptions = {}): Fix[] {
   const last = course.gates[seq[seq.length - 1]!]!;
 
   const waypoints: LonLat[] = [destination(first.center, opts.leadInM ?? 400, first.headingDeg + 180)];
-  for (const gi of seq) waypoints.push(course.gates[gi]!.center);
+  for (const gi of seq) waypoints.push(aimPoint(course.gates[gi]!));
   waypoints.push(destination(last.center, opts.leadOutM ?? 300, last.headingDeg));
 
   const ref = waypoints[0]!;
@@ -49,28 +60,32 @@ export function demoFlight(course: Course, opts: DemoOptions = {}): Fix[] {
     });
   }
 
-  const elevAt = (p: LonLat): number => {
+  const nearestGate = (p: LonLat): { gate: Course["gates"][number]; distanceM: number } => {
     let best = course.gates[0]!;
     for (const g of course.gates) if (haversine(g.center, p) < haversine(best.center, p)) best = g;
-    return best.groundElevM ?? 0;
+    return { gate: best, distanceM: haversine(best.center, p) };
   };
 
   return raw.map((r, i) => {
     const before = raw[Math.max(0, i - 2)]!.track;
     const after = raw[Math.min(raw.length - 1, i + 2)]!.track;
     const turnRate = (wrap180(after - before) * Math.PI) / 180 / (4 / rate); // rad/s over ±2 samples
-    const roll = (Math.atan((speed * turnRate) / G) * 180) / Math.PI;
+    const turnRoll = Math.max(-80, Math.min(80, (Math.atan((speed * turnRate) / G) * 180) / Math.PI));
+    const near = nearestGate(r.p);
+    const atGate = near.distanceM < ATTITUDE_ZONE_M;
+    const roll = atGate && near.gate.type === "level" ? 0 : atGate && near.gate.type === "knife" ? 90 : turnRoll;
+    const agl = near.gate.topM !== null ? Math.min(height, near.gate.topM * 0.7) : height;
     return {
       t: i / rate,
       lon: r.p.lon,
       lat: r.p.lat,
-      altMslM: elevAt(r.p) + height,
-      aglM: height,
+      altMslM: (near.gate.groundElevM ?? 0) + agl,
+      aglM: agl,
       trackDeg: r.track,
       gsMs: speed,
       headingDeg: r.track,
       pitchDeg: 0,
-      rollDeg: Math.max(-80, Math.min(80, roll)),
+      rollDeg: roll,
     };
   });
 }

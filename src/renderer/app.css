@@ -180,6 +180,9 @@
 .gate-cell.missed {
   background: var(--bad);
 }
+.gate-cell.penalized {
+  background: var(--warn);
+}
 .gate-cell.next {
   background: var(--text-1);
 }
@@ -190,6 +193,13 @@
 .next-gate-name {
   font-size: var(--size-lg);
   font-weight: 600;
+}
+.next-gate-needs {
+  color: var(--warn);
+  font-weight: 600;
+}
+.live-penalties {
+  font-size: var(--size-sm);
 }
 .next-gate-where {
   display: flex;
@@ -646,4 +656,9 @@
 }
 .leaflet-container {
   font-family: var(--font-ui);
+}
+
+.designer-rules summary {
+  cursor: pointer;
+  margin-bottom: var(--space-2);
 }

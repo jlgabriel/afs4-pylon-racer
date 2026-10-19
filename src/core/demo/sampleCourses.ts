@@ -1,5 +1,6 @@
 // Courses seeded so there is something to fly (or to watch in demo mode) from the first launch.
-// Two sit just north-east of EDDM (Munich); one is in the open Mojave desert at KDAG.
+// Two sit just north-east of EDDM (Munich); two are in the open Mojave desert at KDAG, one of them
+// a flight test of every rule.
 import { COURSE_FORMAT, COURSE_VERSION, parseCourse, type Course } from "../course/course";
 
 const STAMP = "2026-10-18T00:00:00Z";
@@ -24,6 +25,27 @@ export function sampleCourses(): Course[] {
         { id: "g3", type: "gate", center: { lon: -116.8329268, lat: 34.8514684 }, widthM: 100, headingDeg: 270, pylon: "blue", groundElevM: 588 },
         { id: "g4", type: "gate", center: { lon: -116.8395021, lat: 34.8514663 }, widthM: 100, headingDeg: 270, pylon: "red", groundElevM: 588 },
         { id: "g5", type: "finish", center: { lon: -116.8460774, lat: 34.8514639 }, widthM: 100, headingDeg: 270, pylon: "home", groundElevM: 588 },
+      ],
+    }),
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "kdag-rules-test",
+      name: "KDAG Rules Test",
+      author: "Pylon Racer",
+      description:
+        "One gate of each kind, westbound, 1.5 km north of KDAG and parallel to Daggett Sprint: 2 wings level, 3 knife edge, 4 turn pylon kept on your left, 5 below 40 m.",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      laps: 1,
+      // Lat 34.8665, 600 m apart, terrain from Open-Meteo (591–597 m).
+      gates: [
+        { id: "g1", type: "start", center: { lon: -116.8198, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 591 },
+        { id: "g2", type: "level", center: { lon: -116.8263691, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 592 },
+        { id: "g3", type: "knife", center: { lon: -116.8329382, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 594 },
+        { id: "g4", type: "turn", center: { lon: -116.8395073, lat: 34.8665 }, widthM: 150, headingDeg: 270, pylon: null, groundElevM: 596, turnSide: "left" },
+        { id: "g5", type: "gate", center: { lon: -116.8460765, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 596, topM: 40 },
+        { id: "g6", type: "finish", center: { lon: -116.8526456, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 597 },
       ],
     }),
     parseCourse({

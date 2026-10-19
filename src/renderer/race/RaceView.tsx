@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Course, Gate, GateType } from "../../core/course/course";
 import { relativeBearing } from "../../core/geo/geo";
 import type { Fix } from "../../core/race/fix";
-import type { Pass, RaceSnapshot } from "../../core/race/engine";
+import type { Pass, Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
 import type { Run } from "../../core/run/run";
 import { classLabel } from "../../core/ranking/classes";
 import type { LiveState } from "../../core/session/raceSession";
@@ -12,6 +12,7 @@ import type { RunSummary, TelemetryStatus } from "../../shared/racerApi";
 import { KMH_PER_MS, fmtDelta, fmtDistance, fmtTime } from "../app/format";
 import { useStore } from "../state/store";
 import { MiniMap } from "./MiniMap";
+import { gateRequirements, penaltyReason } from "./rulesText";
 
 const GATE_NAME: Record<GateType, string> = {
   start: "Start",
@@ -22,7 +23,8 @@ const GATE_NAME: Record<GateType, string> = {
   turn: "Turn pylon",
 };
 
-const PENALTY_NAME = { "missed-gate": "Missed gate", "wrong-direction": "Wrong direction" } as const;
+/** Penalties that mean the gate itself was not flown; the others are about HOW it was flown. */
+const GATE_LOST: ReadonlySet<PenaltyKind> = new Set(["missed-gate"]);
 
 export function RaceView() {
   const course = useStore((s) => s.selected);
@@ -90,6 +92,7 @@ export function RaceView() {
           </div>
 
           <GateStrip race={race} />
+          {race?.status === "running" && race.penalties.length > 0 && <PenaltyList penalties={race.penalties} course={course} />}
 
           {nextGateIndex !== null && live?.nextGate && (
             <div className="next-gate">
@@ -98,6 +101,9 @@ export function RaceView() {
                 {nextGateIndex + 1} · {GATE_NAME[course.gates[nextGateIndex]!.type]}
                 {race && race.laps > 1 && race.status === "running" && <span className="muted"> · lap {race.lap} of {race.laps}</span>}
               </div>
+              {gateRequirements(course.gates[nextGateIndex]!, course).length > 0 && (
+                <div className="next-gate-needs">{gateRequirements(course.gates[nextGateIndex]!, course).join(" · ")}</div>
+              )}
               <div className="next-gate-where">
                 <span className="num muted">{fmtDistance(live.nextGate.distanceM)}</span>
                 {live.fix && <TurnCue fix={live.fix} gate={course.gates[nextGateIndex]!} />}
@@ -105,7 +111,7 @@ export function RaceView() {
             </div>
           )}
 
-          {race && (race.status === "finished" || race.status === "dnf") && <Result race={race} target={targetRun} />}
+          {race && (race.status === "finished" || race.status === "dnf") && <Result race={race} target={targetRun} course={course} />}
         </section>
 
         <section className="panel race-side">
@@ -182,13 +188,16 @@ function StatusLine({ race, telemetry }: { race: RaceSnapshot | null; telemetry:
 
 function GateStrip({ race }: { race: RaceSnapshot | null }) {
   if (!race) return null;
-  const penalized = new Set(race.penalties.filter((p) => p.kind === "missed-gate").map((p) => p.step));
+  const missed = new Set(race.penalties.filter((p) => GATE_LOST.has(p.kind)).map((p) => p.step));
+  const penalized = new Set(race.penalties.filter((p) => !GATE_LOST.has(p.kind)).map((p) => p.step));
   return (
     <div className="gate-strip" aria-label="Gates">
       {race.sequence.map((gi, step) => {
-        const state = penalized.has(step)
+        const state = missed.has(step)
           ? "missed"
-          : step < race.step
+          : penalized.has(step) && step < race.step
+            ? "penalized"
+            : step < race.step
             ? "done"
             : step === race.step && race.status !== "finished"
               ? "next"
@@ -199,7 +208,7 @@ function GateStrip({ race }: { race: RaceSnapshot | null }) {
   );
 }
 
-function Result({ race, target }: { race: RaceSnapshot; target: Run | null }) {
+function Result({ race, target, course }: { race: RaceSnapshot; target: Run | null; course: Course }) {
   const newBest = race.status === "finished" && (!target || race.total < target.result.total);
   return (
     <div className="result">
@@ -216,8 +225,14 @@ function Result({ race, target }: { race: RaceSnapshot; target: Run | null }) {
         <span className="muted">Flight time</span>
         <span>{fmtTime(race.raw)}</span>
         {race.penalties.map((p, i) => (
-          <PenaltyRow key={i} name={PENALTY_NAME[p.kind]} gate={p.gateIndex + 1} seconds={p.seconds} />
+          <PenaltyRow key={i} penalty={p} course={course} />
         ))}
+        {race.penalties.length === 0 && (
+          <>
+            <span className="good">Clean run</span>
+            <span className="good">+0.0 s</span>
+          </>
+        )}
         <span className="muted">Total</span>
         <span>{fmtTime(race.total)}</span>
       </div>
@@ -230,13 +245,24 @@ function Result({ race, target }: { race: RaceSnapshot; target: Run | null }) {
   );
 }
 
-function PenaltyRow({ name, gate, seconds }: { name: string; gate: number; seconds: number }) {
+/** The penalties so far, newest first, while racing. */
+function PenaltyList({ penalties, course }: { penalties: Penalty[]; course: Course }) {
+  return (
+    <div className="result-rows num live-penalties">
+      {[...penalties].reverse().map((p, i) => (
+        <PenaltyRow key={penalties.length - i} penalty={p} course={course} />
+      ))}
+    </div>
+  );
+}
+
+function PenaltyRow({ penalty: p, course }: { penalty: Penalty; course: Course }) {
   return (
     <>
       <span className="bad">
-        {name} · gate {gate}
+        Gate {p.gateIndex + 1} · {penaltyReason(p, course)}
       </span>
-      <span className="bad">+{seconds.toFixed(1)} s</span>
+      <span className="bad">+{p.seconds.toFixed(1)} s</span>
     </>
   );
 }

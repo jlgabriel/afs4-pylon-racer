@@ -5,6 +5,9 @@ import { importRctCourse, isRctCourse } from "../src/core/course/importRct";
 import { haversine, pylonsOfGate } from "../src/core/geo/geo";
 import { makeCourse, straightCourse } from "./helpers";
 
+/** courseRevision(straightCourse()) as computed by v0.2.0. */
+const V02_STRAIGHT_REVISION = "b68df757753e58f5";
+
 const fixture = (name: string): unknown => JSON.parse(readFileSync(new URL(`fixtures/${name}`, import.meta.url), "utf8"));
 
 describe("gate roles", () => {
@@ -58,6 +61,14 @@ describe("revision", () => {
     expect(courseRevision(moved)).not.toBe(courseRevision(a));
     const harsher = straightCourse({ rules: { missedGatePenaltyS: 30 } });
     expect(courseRevision(harsher)).not.toBe(courseRevision(a));
+  });
+
+  it("keeps the v0.2 revision while the rules added in v0.3 stay at their defaults", () => {
+    // Pinned from v0.2: runs saved then must still match their course.
+    expect(courseRevision(straightCourse())).toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(straightCourse({ rules: { pylonHitRadiusM: 5, pylonHeightM: 25 } }))).toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(straightCourse({ rules: { pylonHitRadiusM: 8 } }))).not.toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(straightCourse({ rules: { pylonHeightM: 40 } }))).not.toBe(V02_STRAIGHT_REVISION);
   });
 });
 

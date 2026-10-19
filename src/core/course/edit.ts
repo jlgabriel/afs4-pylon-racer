@@ -1,7 +1,7 @@
 // Pure edits for the course designer. A draft may be unfinished (fewer than two gates); it becomes a
 // Course only through parseCourse() when saved. Roles stay positional, so every edit ends in
 // normalizeRoles(): the first gate is the start, and on a single-lap course the last is the finish.
-import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, type Course, type Gate, type GateType } from "./course";
+import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, rulesSchema, type Course, type Gate, type GateType } from "./course";
 import { destination, haversine, initialBearing, toLocal, wrap360, type LonLat } from "../geo/geo";
 
 export type Draft = Omit<Course, "gates"> & { gates: Gate[] };
@@ -23,17 +23,7 @@ export function newDraft(id: string, author: string, nowIso: string): Draft {
     updatedAt: nowIso,
     laps: 1,
     gates: [],
-    rules: {
-      missedGatePenaltyS: 10,
-      missedGateIsDnf: false,
-      wrongDirectionPenaltyS: 10,
-      attitudePenaltyS: 2,
-      tooHighPenaltyS: 2,
-      pylonHitPenaltyS: 3,
-      turnCutPenaltyS: 10,
-      levelToleranceDeg: 10,
-      knifeToleranceDeg: 15,
-    },
+    rules: rulesSchema.parse({}),
     medals: {},
   };
 }

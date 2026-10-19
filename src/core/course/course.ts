@@ -49,6 +49,10 @@ export const rulesSchema = z.object({
   turnCutPenaltyS: z.number().min(0).default(10),
   levelToleranceDeg: z.number().min(0).max(90).default(10),
   knifeToleranceDeg: z.number().min(0).max(90).default(15),
+  /** Passing closer than this to a pylon's center counts as hitting it (aircraft as a point). */
+  pylonHitRadiusM: z.number().positive().default(5),
+  /** Pylons are this tall: passing above it is not a hit. To be measured in the sim (DESIGN §11). */
+  pylonHeightM: z.number().positive().default(25),
 });
 export type Rules = z.infer<typeof rulesSchema>;
 
@@ -113,7 +117,7 @@ export function parseCourse(data: unknown): Course {
  */
 export function revisionInput(c: Course): string {
   const r = c.rules;
-  const rules = [
+  const rules: (number | boolean | string)[] = [
     r.missedGatePenaltyS,
     r.missedGateIsDnf,
     r.wrongDirectionPenaltyS,
@@ -124,6 +128,12 @@ export function revisionInput(c: Course): string {
     r.levelToleranceDeg,
     r.knifeToleranceDeg,
   ];
+  // Rules added after v0.2 join the list only when they differ from their default, so the courses
+  // (and the runs) of earlier versions keep their revision.
+  const later = rulesSchema.parse({});
+  for (const key of ["pylonHitRadiusM", "pylonHeightM"] as const) {
+    if (r[key] !== later[key]) rules.push(`${key}=${r[key]}`);
+  }
   const gates = c.gates.map((g) => [
     g.type,
     g.center.lon.toFixed(7),

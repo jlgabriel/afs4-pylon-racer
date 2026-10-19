@@ -121,7 +121,11 @@ export function installMockBridge(): void {
       stopDemo();
       session.reset();
       const s = session;
-      const fixes = demoFlight(s.course, { rateHz: 20 });
+      // ?sloppy flies the demo badly on purpose (banked and high), to see the penalties on screen.
+      const sloppy = new URLSearchParams(window.location.search).has("sloppy");
+      const fixes = demoFlight(s.course, { rateHz: 20 }).map((f) =>
+        sloppy ? { ...f, rollDeg: f.rollDeg + 35, altMslM: f.altMslM + 30, aglM: f.aglM === null ? null : f.aglM + 30 } : f,
+      );
       const t0 = performance.now() / 1000;
       let i = 0;
       demo = window.setInterval(() => {

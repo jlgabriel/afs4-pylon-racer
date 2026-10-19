@@ -1,7 +1,7 @@
 // The course designer: the map on the left, the course and its gates on the right. Edits go to the
 // store's draft through the pure functions in core/course/edit; nothing is written until Save.
 import { useEffect } from "react";
-import type { Gate, GateType } from "../../core/course/course";
+import type { Gate, GateType, Rules } from "../../core/course/course";
 import {
   MIDDLE_KINDS,
   addGate,
@@ -155,6 +155,8 @@ export function Designer() {
             )}
           </section>
 
+          <RulesPanel rules={draft.rules} edit={(patch) => editDraft((d) => ({ ...d, rules: { ...d.rules, ...patch } }))} />
+
           <section className="panel designer-gates">
             <div className="label">Gates · click the map to add</div>
             {draft.gates.length === 0 && <div className="muted">No gates yet.</div>}
@@ -259,6 +261,23 @@ function GateRow({ gate: g, index, count, selected, onSelect, edit }: RowProps) 
             </span>
           </label>
           <label className="field">
+            <span>Max height</span>
+            <span className="field-inline">
+              <input
+                type="number"
+                min={1}
+                step={5}
+                placeholder="none"
+                value={g.topM ?? ""}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  edit((d) => updateGate(d, g.id, { topM: e.target.value === "" || !(v > 0) ? null : v }));
+                }}
+              />
+              <span className="muted">m above ground</span>
+            </span>
+          </label>
+          <label className="field">
             <span>Pylon</span>
             <select value={g.pylon ?? ""} onChange={(e) => edit((d) => updateGate(d, g.id, { pylon: e.target.value || null }))}>
               <option value="">Default ({PYLONS.find((p) => p.id === DEFAULT_PYLON[g.type])?.label})</option>
@@ -275,5 +294,48 @@ function GateRow({ gate: g, index, count, selected, onSelect, edit }: RowProps) 
         </div>
       )}
     </li>
+  );
+}
+
+type NumericRule = { [K in keyof Rules]: Rules[K] extends number ? K : never }[keyof Rules];
+
+const RULE_FIELDS: { key: NumericRule; label: string; unit: string; min?: number; max?: number }[] = [
+  { key: "wrongDirectionPenaltyS", label: "Wrong direction", unit: "s" },
+  { key: "attitudePenaltyS", label: "Wrong attitude", unit: "s" },
+  { key: "levelToleranceDeg", label: "Level within", unit: "° of bank", max: 90 },
+  { key: "knifeToleranceDeg", label: "Knife edge within", unit: "° of 90°", max: 90 },
+  { key: "tooHighPenaltyS", label: "Too high", unit: "s" },
+  { key: "pylonHitPenaltyS", label: "Pylon hit", unit: "s" },
+  { key: "pylonHitRadiusM", label: "Hit within", unit: "m of a pylon", min: 0.5 },
+  { key: "pylonHeightM", label: "Pylon height", unit: "m", min: 1 },
+  { key: "turnCutPenaltyS", label: "Turn pylon cut", unit: "s" },
+];
+
+/** The course's penalties and tolerances (the missed gate lives with the course basics). */
+function RulesPanel({ rules, edit }: { rules: Rules; edit(patch: Partial<Rules>): void }) {
+  return (
+    <details className="panel designer-rules">
+      <summary className="label">Penalties and tolerances</summary>
+      {RULE_FIELDS.map((f) => (
+        <label key={f.key} className="field">
+          <span>{f.label}</span>
+          <span className="field-inline">
+            <input
+              type="number"
+              min={f.min ?? 0}
+              max={f.max}
+              step={f.unit === "s" ? 1 : 0.5}
+              value={rules[f.key]}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (!Number.isFinite(v)) return;
+                edit({ [f.key]: Math.min(f.max ?? Infinity, Math.max(f.min ?? 0, v)) });
+              }}
+            />
+            <span className="muted">{f.unit}</span>
+          </span>
+        </label>
+      ))}
+    </details>
   );
 }

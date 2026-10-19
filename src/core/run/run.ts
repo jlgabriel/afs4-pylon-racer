@@ -3,7 +3,7 @@
 // .pylonrun files — so it is validated with zod on the way back in.
 import { z } from "zod";
 import type { Fix } from "../race/fix";
-import type { RaceSnapshot } from "../race/engine";
+import { PENALTY_KINDS, type RaceSnapshot } from "../race/engine";
 
 export const RUN_FORMAT = "pylon-racer/run";
 export const RUN_VERSION = 1;
@@ -25,11 +25,12 @@ const passSchema = z.object({
 });
 
 const penaltySchema = z.object({
-  kind: z.enum(["missed-gate", "wrong-direction"]),
+  kind: z.enum(PENALTY_KINDS),
   step: z.number().int(),
   gateIndex: z.number().int(),
   elapsed: z.number(),
   seconds: z.number(),
+  measured: z.number().nullable().default(null),
 });
 
 export const runSchema = z.object({
