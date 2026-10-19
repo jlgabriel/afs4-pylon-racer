@@ -33,12 +33,17 @@ export class Storage {
     this.settingsFile = path.join(userData, "settings.json");
   }
 
-  /** First launch: create the folders and seed the sample courses. */
+  /**
+   * Create the folders and seed any sample course that is missing, so a sample added in a new version
+   * reaches existing installs too. (Revisit when courses can be deleted: a deleted sample would come
+   * back on the next launch.)
+   */
   init(): void {
-    const fresh = !existsSync(this.coursesDir);
     mkdirSync(this.coursesDir, { recursive: true });
     mkdirSync(this.runsDir, { recursive: true });
-    if (fresh) for (const c of sampleCourses()) this.writeCourse(c);
+    for (const c of sampleCourses()) {
+      if (!existsSync(path.join(this.coursesDir, `${c.id}.json`))) this.writeCourse(c);
+    }
   }
 
   // --- settings -----------------------------------------------------------------------------------

@@ -1,11 +1,31 @@
-// Courses seeded into a fresh install so there is something to fly (or to watch in demo mode) on
-// the first launch. Both sit just north-east of EDDM (Munich): take off there and head for them.
+// Courses seeded so there is something to fly (or to watch in demo mode) from the first launch.
+// Two sit just north-east of EDDM (Munich); one is in the open Mojave desert at KDAG.
 import { COURSE_FORMAT, COURSE_VERSION, parseCourse, type Course } from "../course/course";
 
 const STAMP = "2026-10-18T00:00:00Z";
 
 export function sampleCourses(): Course[] {
   return [
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "daggett-sprint",
+      name: "Daggett Sprint",
+      author: "Pylon Racer",
+      description:
+        "Five gates in a straight line on the extended centerline of KDAG runway 26, 600 m apart. Take off on 26 and hold runway heading: the start is 2 km past the end of the runway.",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+      laps: 1,
+      // On the extended centerline of runway 08/26 (true heading 90/270). Open desert, terrain ~588 m.
+      gates: [
+        { id: "g1", type: "start", center: { lon: -116.8197763, lat: 34.8514715 }, widthM: 100, headingDeg: 270, pylon: "green", groundElevM: 588 },
+        { id: "g2", type: "gate", center: { lon: -116.8263516, lat: 34.8514701 }, widthM: 100, headingDeg: 270, pylon: "red", groundElevM: 588 },
+        { id: "g3", type: "gate", center: { lon: -116.8329268, lat: 34.8514684 }, widthM: 100, headingDeg: 270, pylon: "blue", groundElevM: 588 },
+        { id: "g4", type: "gate", center: { lon: -116.8395021, lat: 34.8514663 }, widthM: 100, headingDeg: 270, pylon: "red", groundElevM: 588 },
+        { id: "g5", type: "finish", center: { lon: -116.8460774, lat: 34.8514639 }, widthM: 100, headingDeg: 270, pylon: "home", groundElevM: 588 },
+      ],
+    }),
     parseCourse({
       format: COURSE_FORMAT,
       version: COURSE_VERSION,
