@@ -55,6 +55,8 @@ export function RaceView() {
             {course.gates.length} gates{course.laps > 1 ? ` · ${course.laps} laps` : ""}
             {course.author ? ` · by ${course.author}` : ""}
           </div>
+          {course.description && <div className="muted race-desc">{course.description}</div>}
+          <CourseTools />
         </div>
         <div className="race-actions">
           {demoRunning ? (
@@ -109,6 +111,33 @@ export function RaceView() {
 
       <Runs runs={runs} />
     </main>
+  );
+}
+
+/** Edit, copy, delete, and the course's pylons in AFS4. */
+function CourseTools() {
+  const summary = useStore((s) => s.courses.find((c) => c.id === s.selected?.id));
+  const busy = useStore((s) => s.busy);
+  const edit = useStore((s) => s.editCourse);
+  const duplicate = useStore((s) => s.duplicateCourse);
+  const remove = useStore((s) => s.deleteCourse);
+  const install = useStore((s) => s.installCourse);
+  const uninstall = useStore((s) => s.uninstallCourse);
+  const state = summary?.install.state ?? "none";
+  return (
+    <div className="course-tools">
+      <button onClick={edit}>Edit</button>
+      <button onClick={() => void duplicate()}>Duplicate</button>
+      <button onClick={() => void remove()}>Delete</button>
+      <span className="course-tools-sep" />
+      <span className={`install-state ${state}`}>
+        {state === "current" ? "Pylons in AFS4" : state === "outdated" ? "Pylons in AFS4 are out of date" : "Pylons not in AFS4"}
+      </span>
+      <button disabled={busy} onClick={() => void install()}>
+        {state === "none" ? "Install pylons" : "Reinstall"}
+      </button>
+      {state !== "none" && <button onClick={() => void uninstall()}>Remove</button>}
+    </div>
   );
 }
 

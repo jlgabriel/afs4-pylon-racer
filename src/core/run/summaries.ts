@@ -31,11 +31,21 @@ export function lapLength(c: Course): number {
   return len;
 }
 
-export function summarizeCourse(c: Course, runs: readonly RunSummary[]): CourseSummary {
+export interface InstalledRef {
+  courseId: string;
+  revision: string;
+  folderName: string;
+}
+
+export function summarizeCourse(c: Course, runs: readonly RunSummary[], installed: readonly InstalledRef[] = []): CourseSummary {
   const revision = courseRevision(c);
   const mine = runs.filter((r) => r.courseId === c.id && r.courseRevision === revision);
   const finished = mine.filter((r) => r.status === "finished").map((r) => r.total);
+  const poi = installed.find((p) => p.courseId === c.id);
   return {
+    install: poi
+      ? { state: poi.revision === revision ? "current" : "outdated", folderName: poi.folderName }
+      : { state: "none", folderName: null },
     id: c.id,
     name: c.name,
     author: c.author,

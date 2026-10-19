@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TelemetryStatus } from "../shared/racerApi";
 import { fmtDistance, fmtTime } from "./app/format";
+import { Designer } from "./design/Designer";
 import { RaceView } from "./race/RaceView";
 import { useStore } from "./state/store";
 
@@ -9,6 +10,8 @@ export function App() {
   const bridge = useStore((s) => s.bridge);
   const message = useStore((s) => s.message);
   const dismiss = useStore((s) => s.dismissMessage);
+  const chooseAfs4Dir = useStore((s) => s.chooseAfs4Dir);
+  const view = useStore((s) => s.view);
 
   useEffect(() => {
     void init();
@@ -18,15 +21,18 @@ export function App() {
     <div className="app">
       <TopBar />
       {message && (
-        <div className="message" role="alert">
-          {message}
-          <button onClick={dismiss}>Dismiss</button>
+        <div className={`message message-${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>
+          <span>{message.text}</span>
+          <span className="message-actions">
+            {message.chooseAfs4 && <button onClick={() => void chooseAfs4Dir()}>Choose folder…</button>}
+            <button onClick={dismiss}>Dismiss</button>
+          </span>
         </div>
       )}
       {bridge ? (
         <div className="body">
           <CourseList />
-          <RaceView />
+          {view === "design" ? <Designer /> : <RaceView />}
         </div>
       ) : (
         <div className="body empty muted">
@@ -108,14 +114,18 @@ function CourseList() {
   const selected = useStore((s) => s.selected);
   const select = useStore((s) => s.select);
   const importCourse = useStore((s) => s.importCourse);
+  const newCourse = useStore((s) => s.newCourse);
 
   return (
     <nav className="courses">
       <div className="courses-head">
         <span className="label">Courses</span>
-        <button onClick={() => void importCourse()} title="Import a course file, including the old pylon-race course.json">
-          Import…
-        </button>
+        <span className="courses-tools">
+          <button onClick={newCourse}>New</button>
+          <button onClick={() => void importCourse()} title="Import a course file, including the old pylon-race course.json">
+            Import…
+          </button>
+        </span>
       </div>
       <ul>
         {courses.map((c) => (
@@ -126,7 +136,14 @@ function CourseList() {
                 {c.gates} gates · {fmtDistance(c.lapLengthM * c.laps)}
                 {c.laps > 1 ? ` · ${c.laps} laps` : ""}
               </span>
-              <span className="course-best num">{c.bestTotal !== null ? `Best ${fmtTime(c.bestTotal)}` : "No runs yet"}</span>
+              <span className="course-best num">
+                {c.bestTotal !== null ? `Best ${fmtTime(c.bestTotal)}` : "No runs yet"}
+                {c.install.state !== "none" && (
+                  <span className={c.install.state === "current" ? "good" : "warn"}>
+                    {c.install.state === "current" ? " · in AFS4" : " · reinstall"}
+                  </span>
+                )}
+              </span>
             </button>
           </li>
         ))}

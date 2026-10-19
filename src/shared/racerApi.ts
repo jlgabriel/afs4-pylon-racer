@@ -15,6 +15,8 @@ export type RacerError =
   | { code: "cancelled"; message: string }
   | { code: "invalid-course"; message: string }
   | { code: "not-found"; message: string }
+  | { code: "afs4-not-found"; message: string; dir: string }
+  | { code: "network"; message: string }
   | { code: "io"; message: string };
 
 export type RacerResult<T> = { ok: true; value: T } | { ok: false; error: RacerError };
@@ -31,6 +33,20 @@ export interface CourseSummary {
   /** Best finished total on this revision, seconds; null when none yet. */
   bestTotal: number | null;
   runs: number;
+  /** Whether its pylons are installed in AFS4, and from which revision of the course. */
+  install: { state: "none" | "current" | "outdated"; folderName: string | null };
+}
+
+export interface PlaceHit {
+  label: string;
+  lon: number;
+  lat: number;
+}
+
+export interface SaveResult {
+  course: CourseSummary;
+  /** Non-fatal problems, e.g. the terrain elevation could not be fetched. */
+  warnings: string[];
 }
 
 export interface RunSummary {
@@ -75,16 +91,33 @@ export interface LiveUpdate {
 export interface AppInfo {
   version: string;
   pilot: string;
+  /** The AFS4 user folder pylons are installed into, and whether it exists. */
+  afs4Dir: string;
+  afs4DirFound: boolean;
+  /** The course selected last time, to reopen it. */
+  lastCourseId: string | null;
 }
 
 export interface RacerApi {
   getAppInfo(): Promise<AppInfo>;
   setPilot(name: string): Promise<AppInfo>;
+  /** Opens a folder dialog to pick the AFS4 user folder (the one holding scenery/). */
+  chooseAfs4Dir(): Promise<AppInfo>;
 
   listCourses(): Promise<CourseSummary[]>;
   getCourse(id: string): Promise<RacerResult<Course>>;
   /** Opens a file dialog; accepts native courses and the old pylon-race tool's course.json. */
   importCourse(): Promise<RacerResult<CourseSummary>>;
+  /** Validates and stores a course from the designer. An empty id means a new course. Gates with
+   *  no terrain elevation get one looked up. */
+  saveCourse(draft: Course): Promise<RacerResult<SaveResult>>;
+  duplicateCourse(id: string): Promise<RacerResult<CourseSummary>>;
+  /** Deletes the course file and its installed pylons. Its runs are kept. */
+  deleteCourse(id: string): Promise<RacerResult<void>>;
+  /** Installs (or reinstalls) the course's pylons into AFS4. */
+  installCourse(id: string): Promise<RacerResult<CourseSummary>>;
+  uninstallCourse(id: string): Promise<RacerResult<CourseSummary>>;
+  searchPlaces(query: string): Promise<RacerResult<PlaceHit[]>>;
 
   /** Makes this the active course and arms a fresh attempt. */
   selectCourse(id: string): Promise<RacerResult<CourseSummary>>;

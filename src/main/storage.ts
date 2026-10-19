@@ -1,10 +1,10 @@
 // Everything the app keeps on disk, under userData:
 //   courses/<id>.json   one native course per file
 //   runs/<id>.json      one run per file (with its track)
-//   settings.json       the pilot's callsign
+//   settings.json       pilot, AFS4 folder override, last course, removed samples
 // Files are validated on the way in; a file that fails is logged and skipped, never fatal. Run
 // summaries are cached in memory after the first read (the tracks make run files large).
-import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { courseRevision, parseCourse, type Course } from "../core/course/course";
@@ -15,11 +15,18 @@ import type { RunSummary } from "../shared/racerApi";
 import { writeFileAtomic } from "./fsAtomic";
 import { log } from "./log";
 
-const settingsSchema = z.object({ pilot: z.string().min(1).max(32).default("Pilot") });
+const settingsSchema = z.object({
+  pilot: z.string().min(1).max(32).default("Pilot"),
+  /** Overrides the detected AFS4 user folder. */
+  afs4Dir: z.string().nullable().default(null),
+  lastCourseId: z.string().nullable().default(null),
+  /** Sample courses the user deleted: not seeded again. */
+  removedSamples: z.array(z.string()).default([]),
+});
 export type Settings = z.infer<typeof settingsSchema>;
 
 /** File names are derived from ids; anything else in an id is refused rather than escaped. */
-const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
+export const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 
 export class Storage {
   private readonly coursesDir: string;
@@ -33,16 +40,14 @@ export class Storage {
     this.settingsFile = path.join(userData, "settings.json");
   }
 
-  /**
-   * Create the folders and seed any sample course that is missing, so a sample added in a new version
-   * reaches existing installs too. (Revisit when courses can be deleted: a deleted sample would come
-   * back on the next launch.)
-   */
+  /** Create the folders and seed any sample course that is missing and was not deleted by the user,
+   *  so a sample added in a new version reaches existing installs too. */
   init(): void {
     mkdirSync(this.coursesDir, { recursive: true });
     mkdirSync(this.runsDir, { recursive: true });
+    const removed = new Set(this.readSettings().removedSamples);
     for (const c of sampleCourses()) {
-      if (!existsSync(path.join(this.coursesDir, `${c.id}.json`))) this.writeCourse(c);
+      if (!removed.has(c.id) && !existsSync(this.courseFile(c.id))) this.writeCourse(c);
     }
   }
 
@@ -64,6 +69,10 @@ export class Storage {
 
   // --- courses ------------------------------------------------------------------------------------
 
+  private courseFile(id: string): string {
+    return path.join(this.coursesDir, `${id}.json`);
+  }
+
   listCourses(): Course[] {
     const out: Course[] = [];
     for (const name of safeReaddir(this.coursesDir)) {
@@ -79,9 +88,22 @@ export class Storage {
 
   getCourse(id: string): Course | null {
     if (!SAFE_ID.test(id)) return null;
-    const file = path.join(this.coursesDir, `${id}.json`);
+    const file = this.courseFile(id);
     if (!existsSync(file)) return null;
     return parseCourse(JSON.parse(readFileSync(file, "utf8")));
+  }
+
+  /** A fresh id derived from the name: readable in file and folder names, never clashing. */
+  newCourseId(name: string): string {
+    const base =
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "course";
+    let id = base;
+    for (let n = 2; existsSync(this.courseFile(id)); n++) id = `${base}-${n}`;
+    return id;
   }
 
   /**
@@ -101,8 +123,23 @@ export class Storage {
     return stored;
   }
 
+  /** Write a course from the designer (create or overwrite by id). */
+  saveCourse(course: Course): void {
+    if (!SAFE_ID.test(course.id)) throw new Error(`Unsafe course id ${course.id}`);
+    this.writeCourse(course);
+  }
+
+  deleteCourse(id: string): void {
+    if (!SAFE_ID.test(id)) throw new Error(`Unsafe course id ${id}`);
+    rmSync(this.courseFile(id), { force: true });
+    if (sampleCourses().some((c) => c.id === id)) {
+      const removed = new Set(this.readSettings().removedSamples).add(id);
+      this.writeSettings({ removedSamples: [...removed] });
+    }
+  }
+
   private writeCourse(c: Course): void {
-    writeFileAtomic(path.join(this.coursesDir, `${c.id}.json`), JSON.stringify(c, null, 2) + "\n");
+    writeFileAtomic(this.courseFile(c.id), JSON.stringify(c, null, 2) + "\n");
   }
 
   // --- runs ---------------------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 // navigation, no permissions, and a CSP on the packaged renderer. All I/O lives behind main/ipc.ts.
 import { join } from "node:path";
 import { app, BrowserWindow, session, shell } from "electron";
+import { Installer, defaultAfs4UserDir } from "./installer";
 import { registerIpc } from "./ipc";
 import { LOG_FILE_NAME, log } from "./log";
 import { mayNavigate } from "./navigation";
@@ -26,14 +27,22 @@ const fatal = (what: string) => (e: unknown) => {
 process.on("uncaughtException", fatal("uncaught exception in main"));
 process.on("unhandledRejection", fatal("unhandled promise rejection in main"));
 
-// Packaged renderer only: Vite's dev HMR needs inline scripts and a websocket.
+// Packaged renderer only: Vite's dev HMR needs inline scripts and a websocket. img-src allows https
+// for the designer's map tiles; every other fetch goes through main.
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  "img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 const storage = new Storage(app.getPath("userData"));
 const hub = new TelemetryHub();
 const race = new RaceController(storage, hub);
+const afs4Dir = (): string => storage.readSettings().afs4Dir ?? defaultAfs4UserDir(app.getPath("documents"));
+// Pylon models: extraResources in a packaged build; the repo's assets/ (two levels above out/main/)
+// in dev and when the e2e launches the built main by path.
+const pylonAssets = app.isPackaged
+  ? join(process.resourcesPath, "assets", "pylons")
+  : join(import.meta.dirname, "..", "..", "assets", "pylons");
+const installer = new Installer(afs4Dir, pylonAssets, __APP_VERSION__);
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -90,6 +99,7 @@ app.whenReady().then(() => {
     `Pylon Racer ${__APP_VERSION__} · Electron ${process.versions.electron} · ${process.platform} ${process.arch} · ` +
       `${app.isPackaged ? "packaged" : "dev"} · userData ${app.getPath("userData")}`,
   );
+  log.info(`AFS4 user folder ${afs4Dir()} · pylon models ${pylonAssets}`);
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(false));
   if (!RENDERER_URL) {
     session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
@@ -98,7 +108,7 @@ app.whenReady().then(() => {
   }
 
   storage.init();
-  registerIpc(storage, race);
+  registerIpc({ storage, race, installer, afs4Dir, userData: app.getPath("userData") });
   hub.start();
   createWindow();
   app.on("activate", () => {

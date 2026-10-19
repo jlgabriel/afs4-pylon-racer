@@ -3,11 +3,21 @@
 Pylon racing for **Aerofly FS 4**. Pick a course, fly through its gates in order, and race the clock:
 Pylon Racer follows your flight live, times every gate, applies the penalties and keeps your runs.
 
-> **Early development (v0.1).** The race engine, live telemetry and run history work today. The course
-> designer, scenery install, rankings by aircraft class, sharing, sound and the final look are on the
-> way.
+> **Early development.** The race engine, live telemetry, run history and the course designer work
+> today. Rankings by aircraft class, sharing, sound and the final look are on the way.
 
-## What works in v0.1
+## Design your own courses
+
+- **Course designer on a satellite map**: click to place gates, drag a gate to move it, drag its arrow
+  to turn it, drag a pylon to make it wider or narrower. Search for an airport or a place to start.
+- **Gate kinds**: start, finish, gate, level gate, knife-edge gate and turn pylon (go around a single
+  pylon on the side you are told). Start and finish follow the order of the gates.
+- **Laps and penalties** per course.
+- **Install pylons in Aerofly FS 4 with one click**, and remove them the same way. Pylon Racer only ever
+  touches the scenery folders it created. Restart AFS4 after installing to see them.
+- **Edit, duplicate and delete** courses. Changing the gates of a course starts a new leaderboard for it.
+
+## Racing
 
 - **Live race screen**: race time, delta to your best at each gate, the gate sequence, the next gate and
   its distance, a course map with your trail, and speed, height, altitude and bank.
@@ -19,6 +29,8 @@ Pylon Racer follows your flight live, times every gate, applies the penalties an
 - **Your runs are saved** and listed per course, best first.
 - **Demo flight**: watch any course being flown without the simulator.
 - **Import** courses made with the earlier pylon-race web editor (`course.json`).
+- **Three sample courses**: *Daggett Sprint* at KDAG (take off on runway 26 and hold runway heading),
+  *Munich Sprint* and *Munich Diamond* near EDDM.
 
 ## Connecting to Aerofly FS 4
 
@@ -38,13 +50,13 @@ The top bar shows which source is live and at what rate.
 
 ## Flying a race
 
-1. Pick a course on the left. The two sample courses are just north-east of **EDDM** (Munich).
+1. Pick a course on the left and click **Install pylons**, then restart Aerofly FS 4.
 2. Take off and fly to the course. The race arms itself: it starts when you fly through the start gate
    in the right direction.
 3. Fly the gates in order. Your run is saved at the finish. **Race again** arms a new attempt.
 
-The pylons themselves are not placed in the simulator yet in v0.1 (that arrives with the course
-designer): the map shows where every gate is.
+If your Aerofly FS 4 user folder is not in the usual place (for example, Documents moved to OneDrive),
+Pylon Racer won't find it on its own: it tells you so when you install pylons and lets you choose it.
 
 ## Building from source
 
@@ -63,4 +75,5 @@ npm run build:win      # or build:mac / build:linux
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
 
-Pylon Racer ships no Aerofly FS 4 content.
+Pylon Racer ships no Aerofly FS 4 content. The pylon models are krzysk1's Reno air-race pylons (MIT);
+see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

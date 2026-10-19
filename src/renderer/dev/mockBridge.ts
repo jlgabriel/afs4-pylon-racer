@@ -2,13 +2,13 @@
 // (`npm run preview:renderer`, then open with ?mockracer). It runs the REAL core — sample courses,
 // race session, demo flight — in the page, so the race screen can be exercised without Electron or
 // the simulator. Runs live in memory and vanish on reload.
-import type { Course } from "../../core/course/course";
+import { courseRevision, parseCourse, type Course } from "../../core/course/course";
 import { demoFlight } from "../../core/demo/demoFlight";
 import { sampleCourses } from "../../core/demo/sampleCourses";
 import type { Run } from "../../core/run/run";
 import { rankRuns, summarizeCourse, summarizeRun } from "../../core/run/summaries";
 import { RaceSession } from "../../core/session/raceSession";
-import type { LiveUpdate, RacerApi, RacerResult, RunSummary, TelemetryStatus } from "../../shared/racerApi";
+import type { AppInfo, LiveUpdate, RacerApi, RacerResult, RunSummary, TelemetryStatus } from "../../shared/racerApi";
 
 export function installMockBridge(): void {
   const courses = new Map<string, Course>(sampleCourses().map((c) => [c.id, c]));
@@ -16,10 +16,17 @@ export function installMockBridge(): void {
   const liveListeners = new Set<(u: LiveUpdate) => void>();
   const savedListeners = new Set<(r: RunSummary) => void>();
   let pilot = "Preview";
+  let lastCourseId: string | null = null;
   let session: RaceSession | null = null;
   let demo: number | null = null;
+  /** courseId → installed revision: a pretend scenery/poi/. */
+  const installed = new Map<string, string>();
 
   const summaries = (): RunSummary[] => [...runs.values()].map(summarizeRun);
+  const installedRefs = () => [...installed].map(([courseId, revision]) => ({ courseId, revision, folderName: `mock_${courseId}` }));
+  const summary = (c: Course) => summarizeCourse(c, summaries(), installedRefs());
+  const info = (): AppInfo => ({ version: __APP_VERSION__, pilot, afs4Dir: "(preview)", afs4DirFound: true, lastCourseId });
+  const notFound = (id: string): RacerResult<never> => ({ ok: false, error: { code: "not-found", message: id } });
   const ok = <T>(value: T): RacerResult<T> => ({ ok: true, value });
 
   const telemetry = (): TelemetryStatus => ({
@@ -40,12 +47,51 @@ export function installMockBridge(): void {
   window.setInterval(push, 500);
 
   const api: RacerApi = {
-    getAppInfo: async () => ({ version: __APP_VERSION__, pilot }),
+    getAppInfo: async () => info(),
     setPilot: async (name) => {
       pilot = name.trim().slice(0, 32) || pilot;
-      return { version: __APP_VERSION__, pilot };
+      return info();
     },
-    listCourses: async () => [...courses.values()].map((c) => summarizeCourse(c, summaries())),
+    chooseAfs4Dir: async () => info(),
+    listCourses: async () => [...courses.values()].sort((a, b) => a.name.localeCompare(b.name)).map(summary),
+    saveCourse: async (draft) => {
+      try {
+        const now = new Date().toISOString();
+        const id = draft.id || `${draft.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${courses.size + 1}`;
+        // The real app looks the terrain up on Open-Meteo; the preview pretends it is flat at 588 m.
+        const c = parseCourse({ ...draft, id, updatedAt: now, gates: draft.gates.map((g) => ({ ...g, groundElevM: g.groundElevM ?? 588 })) });
+        courses.set(c.id, c);
+        return ok({ course: summary(c), warnings: [] });
+      } catch (e) {
+        return { ok: false, error: { code: "invalid-course", message: String(e) } };
+      }
+    },
+    duplicateCourse: async (id) => {
+      const c = courses.get(id);
+      if (!c) return notFound(id);
+      const copy = { ...structuredClone(c), id: `${c.id}-copy-${courses.size + 1}`, name: `Copy of ${c.name}` };
+      courses.set(copy.id, copy);
+      return ok(summary(copy));
+    },
+    deleteCourse: async (id) => {
+      courses.delete(id);
+      installed.delete(id);
+      return ok(undefined);
+    },
+    installCourse: async (id) => {
+      const c = courses.get(id);
+      if (!c) return notFound(id);
+      installed.set(id, courseRevision(c));
+      return ok(summary(c));
+    },
+    uninstallCourse: async (id) => {
+      const c = courses.get(id);
+      if (!c) return notFound(id);
+      installed.delete(id);
+      return ok(summary(c));
+    },
+    searchPlaces: async (q) =>
+      ok(q.toLowerCase().includes("dag") ? [{ label: "Barstow-Daggett Airport (KDAG), California", lon: -116.787, lat: 34.8537 }] : []),
     getCourse: async (id) => {
       const c = courses.get(id);
       return c ? ok(c) : { ok: false, error: { code: "not-found", message: id } };
@@ -53,7 +99,8 @@ export function installMockBridge(): void {
     importCourse: async () => ({ ok: false, error: { code: "cancelled", message: "No file dialog in the preview" } }),
     selectCourse: async (id) => {
       const c = courses.get(id);
-      if (!c) return { ok: false, error: { code: "not-found", message: id } };
+      if (!c) return notFound(id);
+      lastCourseId = id;
       stopDemo();
       session = new RaceSession(c, {
         pilot,
@@ -62,7 +109,7 @@ export function installMockBridge(): void {
         nowIso: () => new Date().toISOString(),
       });
       push();
-      return ok(summarizeCourse(c, summaries()));
+      return ok(summary(c));
     },
     resetRace: async () => {
       stopDemo();
