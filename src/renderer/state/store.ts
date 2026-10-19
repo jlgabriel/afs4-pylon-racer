@@ -22,6 +22,8 @@ export interface Message {
 
 const TRAIL_MAX = 2400;
 
+let initStarted = false;
+
 interface State {
   bridge: boolean;
   app: AppInfo | null;
@@ -116,7 +118,9 @@ export const useStore = create<State>((set, get) => {
 
     async init() {
       const racer = getRacer();
-      if (!racer) return;
+      // Once per page: React's dev StrictMode runs effects twice, which would subscribe twice.
+      if (!racer || initStarted) return;
+      initStarted = true;
       const app = await racer.getAppInfo();
       set({ bridge: true, app });
       racer.onLive((update) => {
