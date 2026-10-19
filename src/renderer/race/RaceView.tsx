@@ -1,7 +1,9 @@
 // The race screen: timer, deltas, gate strip, next gate, map, flight values, result and the runs of
 // this course. Everything shown comes from main's live updates; nothing here judges the race.
 import { useMemo } from "react";
-import type { Course, GateType } from "../../core/course/course";
+import type { Course, Gate, GateType } from "../../core/course/course";
+import { relativeBearing } from "../../core/geo/geo";
+import type { Fix } from "../../core/race/fix";
 import type { Pass, RaceSnapshot } from "../../core/race/engine";
 import type { Run } from "../../core/run/run";
 import { classLabel } from "../../core/ranking/classes";
@@ -96,7 +98,10 @@ export function RaceView() {
                 {nextGateIndex + 1} · {GATE_NAME[course.gates[nextGateIndex]!.type]}
                 {race && race.laps > 1 && race.status === "running" && <span className="muted"> · lap {race.lap} of {race.laps}</span>}
               </div>
-              <div className="num muted">{fmtDistance(live.nextGate.distanceM)}</div>
+              <div className="next-gate-where">
+                <span className="num muted">{fmtDistance(live.nextGate.distanceM)}</span>
+                {live.fix && <TurnCue fix={live.fix} gate={course.gates[nextGateIndex]!} />}
+              </div>
             </div>
           )}
 
@@ -138,6 +143,21 @@ function CourseTools() {
       </button>
       {state !== "none" && <button onClick={() => void uninstall()}>Remove</button>}
     </div>
+  );
+}
+
+/** Which way to turn for the next gate: its center relative to the nose. */
+function TurnCue({ fix, gate }: { fix: Fix; gate: Gate }) {
+  const rel = relativeBearing(fix, fix.headingDeg, gate.center);
+  const abs = Math.abs(Math.round(rel));
+  const text = abs <= 10 ? "ahead" : abs >= 170 ? "behind you" : `${abs}° ${rel < 0 ? "left" : "right"}`;
+  return (
+    <span className={`turn-cue ${abs <= 10 ? "on-course" : ""}`} aria-label={`Next gate ${text}`}>
+      <svg viewBox="-12 -12 24 24" className="turn-cue-arrow" aria-hidden>
+        <path d="M0,-10 L7,6 L0,2 L-7,6 Z" transform={`rotate(${rel})`} />
+      </svg>
+      <span className="num">{text}</span>
+    </span>
   );
 }
 

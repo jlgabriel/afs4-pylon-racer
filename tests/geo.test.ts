@@ -6,6 +6,7 @@ import {
   initialBearing,
   lerpAngle,
   pylonsOfGate,
+  relativeBearing,
   segmentIntersection,
   toLocal,
   wrap180,
@@ -86,5 +87,21 @@ describe("angles", () => {
     expect(wrap180(270)).toBe(-90);
     expect(lerpAngle(170, -170, 0.5)).toBeCloseTo(180, 9);
     expect(lerpAngle(-10, 10, 0.25)).toBeCloseTo(-5, 9);
+  });
+});
+
+describe("relative bearing", () => {
+  const north = destination(REF, 1000, 0);
+  it("is zero dead ahead and negative to the left", () => {
+    expect(relativeBearing(REF, 0, north)).toBeCloseTo(0, 3);
+    expect(relativeBearing(REF, 90, north)).toBeCloseTo(-90, 3); // heading east, the gate is north
+    expect(relativeBearing(REF, 270, north)).toBeCloseTo(90, 3); // heading west, it is to the right
+  });
+  it("wraps across north", () => {
+    expect(relativeBearing(REF, 350, destination(REF, 1000, 10))).toBeCloseTo(20, 1);
+    expect(relativeBearing(REF, 10, destination(REF, 1000, 350))).toBeCloseTo(-20, 1);
+  });
+  it("reports a gate behind as about ±180", () => {
+    expect(Math.abs(relativeBearing(REF, 180, north))).toBeCloseTo(180, 3);
   });
 });

@@ -191,6 +191,27 @@
   font-size: var(--size-lg);
   font-weight: 600;
 }
+.next-gate-where {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.turn-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--warn);
+  font-size: var(--size-lg);
+  font-weight: 600;
+}
+.turn-cue.on-course {
+  color: var(--good);
+}
+.turn-cue-arrow {
+  width: 32px;
+  height: 32px;
+  fill: currentColor;
+}
 .result {
   border-top: 1px solid var(--line);
   padding-top: var(--space-3);
@@ -218,15 +239,37 @@
   flex-direction: column;
   gap: var(--space-3);
 }
+.minimap-box {
+  position: relative;
+}
 .minimap {
+  display: block;
   width: 100%;
   background: var(--surface-0);
   border-radius: var(--radius-sm);
 }
 .minimap-label {
-  fill: var(--text-2);
+  fill: var(--text-1);
   font-size: 11px;
   font-family: var(--font-num);
+  paint-order: stroke;
+  stroke: var(--surface-0);
+  stroke-width: 3px;
+}
+.minimap-credit {
+  fill: var(--text-2);
+  font-size: 8px;
+  font-family: var(--font-ui);
+  paint-order: stroke;
+  stroke: var(--surface-0);
+  stroke-width: 2px;
+}
+.minimap-toggle {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  font-size: var(--size-xs);
+  padding: 2px var(--space-2);
 }
 .flight-values {
   display: grid;

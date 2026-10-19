@@ -13,9 +13,8 @@ import type { LonLat } from "../../core/geo/geo";
 import { gatePassLine } from "../../core/race/engine";
 import type { PlaceHit } from "../../shared/racerApi";
 import { getRacer } from "../app/racer";
+import { ESRI_ATTRIBUTION, ESRI_MAX_NATIVE_ZOOM, ESRI_SATELLITE, OSM_STREETS } from "../app/mapTiles";
 
-const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 /** Where a brand-new course opens: KDAG, the open-desert test site. */
 const DEFAULT_VIEW: LonLat = { lon: -116.8, lat: 34.852 };
 
@@ -59,8 +58,8 @@ export function DesignMap(props: Props) {
   useEffect(() => {
     const el = box.current!;
     const map = L.map(el, { zoomControl: true, attributionControl: true });
-    const sat = L.tileLayer(ESRI, { maxZoom: 20, maxNativeZoom: 19, attribution: "Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics" });
-    const osm = L.tileLayer(OSM, { maxZoom: 20, maxNativeZoom: 19, attribution: "&copy; OpenStreetMap contributors" });
+    const sat = L.tileLayer(ESRI_SATELLITE, { maxZoom: 20, maxNativeZoom: ESRI_MAX_NATIVE_ZOOM, attribution: `Tiles &copy; Esri — ${ESRI_ATTRIBUTION}` });
+    const osm = L.tileLayer(OSM_STREETS, { maxZoom: 20, maxNativeZoom: 19, attribution: "&copy; OpenStreetMap contributors" });
     sat.addTo(map);
     L.control.layers({ Satellite: sat, Streets: osm }, undefined, { position: "topright" }).addTo(map);
     route.current = L.polyline([], { className: "design-route", interactive: false }).addTo(map);

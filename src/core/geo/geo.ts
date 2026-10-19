@@ -58,6 +58,11 @@ export function initialBearing(a: LonLat, b: LonLat): number {
   return wrap360(deg(Math.atan2(x, y)));
 }
 
+/** Where `to` lies relative to the nose of an aircraft at `from`: (-180, 180], negative = left. */
+export function relativeBearing(from: LonLat, headingDeg: number, to: LonLat): number {
+  return wrap180(initialBearing(from, to) - headingDeg);
+}
+
 /** Point reached from p after distanceM along bearingDeg. */
 export function destination(p: LonLat, distanceM: number, bearingDeg: number): LonLat {
   const ang = distanceM / EARTH_RADIUS_M;
