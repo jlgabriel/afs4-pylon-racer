@@ -1,0 +1,111 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { courseRevision, gateRoleProblem, raceSequence } from "../src/core/course/course";
+import { importRctCourse, isRctCourse } from "../src/core/course/importRct";
+import { haversine, pylonsOfGate } from "../src/core/geo/geo";
+import { makeCourse, straightCourse } from "./helpers";
+
+const fixture = (name: string): unknown => JSON.parse(readFileSync(new URL(`fixtures/${name}`, import.meta.url), "utf8"));
+
+describe("gate roles", () => {
+  it("accepts start…finish for one lap", () => {
+    expect(gateRoleProblem([{ type: "start" }, { type: "gate" }, { type: "finish" }], 1)).toBeNull();
+  });
+
+  it("rejects a course that does not open with the start", () => {
+    expect(gateRoleProblem([{ type: "gate" }, { type: "start" }, { type: "finish" }], 1)).toMatch(/first gate/);
+  });
+
+  it("rejects a single-lap course without a finish at the end", () => {
+    expect(gateRoleProblem([{ type: "start" }, { type: "finish" }, { type: "gate" }], 1)).toMatch(/last gate/);
+  });
+
+  it("rejects a finish gate on a multi-lap course", () => {
+    expect(gateRoleProblem([{ type: "start" }, { type: "gate" }, { type: "finish" }], 3)).toMatch(/multi-lap/);
+    expect(gateRoleProblem([{ type: "start" }, { type: "gate" }, { type: "level" }], 3)).toBeNull();
+  });
+
+  it("the zod schema enforces the same rule", () => {
+    expect(() => makeCourse([{ type: "gate", x: 0, y: 0, heading: 0 }, { type: "finish", x: 0, y: 100, heading: 0 }])).toThrow();
+  });
+});
+
+describe("race sequence", () => {
+  it("is the gates in order for one lap", () => {
+    expect(raceSequence({ gates: straightCourse().gates, laps: 1 })).toEqual([0, 1, 2]);
+  });
+
+  it("repeats the lap and closes each one on the start line", () => {
+    const gates = straightCourse().gates.slice(0, 2);
+    expect(raceSequence({ gates: [...gates, gates[1]!], laps: 2 })).toEqual([0, 1, 2, 0, 1, 2, 0]);
+  });
+});
+
+describe("revision", () => {
+  it("is stable for the same course and ignores cosmetic fields", () => {
+    const a = straightCourse();
+    const b = { ...straightCourse(), name: "Renamed", description: "x", medals: { ga: { gold: 1, silver: 2, bronze: 3 } } };
+    expect(courseRevision(a)).toBe(courseRevision(b));
+  });
+
+  it("changes when a gate moves or a rule changes", () => {
+    const a = straightCourse();
+    const moved = makeCourse([
+      { type: "start", x: 0, y: -500, heading: 0 },
+      { type: "gate", x: 5, y: 0, heading: 0 },
+      { type: "finish", x: 0, y: 500, heading: 0 },
+    ]);
+    expect(courseRevision(moved)).not.toBe(courseRevision(a));
+    const harsher = straightCourse({ rules: { missedGatePenaltyS: 30 } });
+    expect(courseRevision(harsher)).not.toBe(courseRevision(a));
+  });
+});
+
+describe("import from the old pylon-race tool", () => {
+  it("recognizes its course.json and converts it", () => {
+    const data = fixture("munich_multicolor.json");
+    expect(isRctCourse(data)).toBe(true);
+    const c = importRctCourse(data, "2026-10-18T00:00:00Z");
+    expect(c.name).toBe("Munich Multicolor (pylon test)");
+    expect(c.id).toBe("munich-multicolor");
+    expect(c.gates.map((g) => g.type)).toEqual(["start", "gate", "gate", "gate", "finish"]);
+    expect(c.gates.map((g) => g.pylon)).toEqual(["green", "red", "blue", "red", "home"]);
+    expect(c.gates[0]!.headingDeg).toBe(90);
+    // The old tool's penalties are kept: they are the course author's choice.
+    expect(c.rules.missedGatePenaltyS).toBe(3);
+    expect(c.rules.wrongDirectionPenaltyS).toBe(3);
+    // Its max_agl_m (80 on every gate) was a placeholder, not a rule.
+    expect(c.gates.every((g) => g.topM === null)).toBe(true);
+  });
+
+  it("derives center, width and heading from two pylons", () => {
+    const center = { lon: -119.88, lat: 39.66 };
+    const { left, right } = pylonsOfGate(center, 120, 30);
+    const c = importRctCourse(
+      {
+        schema_version: "0.1",
+        course_id: "pylons",
+        gates: [
+          { id: 1, type: "start", sequence: 1, left_pylon: left, right_pylon: right },
+          { id: 2, type: "finish", sequence: 2, center: { lon: -119.88, lat: 39.67 }, width_m: 80, orientation_deg: 30 },
+        ],
+      },
+      "2026-10-18T00:00:00Z",
+    );
+    const g = c.gates[0]!;
+    expect(g.widthM).toBeCloseTo(120, 0);
+    expect(g.headingDeg).toBeCloseTo(30, 1);
+    expect(haversine(g.center, center)).toBeLessThan(0.5);
+  });
+
+  it("orders gates by sequence, not by file order", () => {
+    const data = fixture("test_course_01.json") as { gates: unknown[] };
+    const reversed = { ...data, gates: [...data.gates].reverse() };
+    const c = importRctCourse(reversed, "2026-10-18T00:00:00Z");
+    expect(c.gates.map((g) => g.type)).toEqual(["start", "gate", "finish"]);
+  });
+
+  it("does not mistake a native course for an old one", () => {
+    expect(isRctCourse(straightCourse())).toBe(false);
+  });
+});

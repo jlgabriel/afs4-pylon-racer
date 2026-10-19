@@ -1,0 +1,57 @@
+{
+  "name": "afs4-pylon-racer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pylon Racer — design pylon race courses for Aerofly FS 4, fly them, and race the clock and other pilots' ghosts.",
+  "license": "GPL-3.0-or-later",
+  "author": "Juan Luis Gabriel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jlgabriel/afs4-pylon-racer.git"
+  },
+  "homepage": "https://github.com/jlgabriel/afs4-pylon-racer#readme",
+  "bugs": "https://github.com/jlgabriel/afs4-pylon-racer/issues",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "build:unpack": "electron-vite build && electron-builder --dir",
+    "build:win": "electron-vite build && electron-builder --win --publish never",
+    "build:mac": "electron-vite build && electron-builder --mac --publish never",
+    "build:linux": "electron-vite build && electron-builder --linux --publish never",
+    "preview": "electron-vite preview",
+    "preview:renderer": "vite --config vite.preview.mts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "electron-vite build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

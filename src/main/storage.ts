@@ -1,0 +1,144 @@
+// Everything the app keeps on disk, under userData:
+//   courses/<id>.json   one native course per file
+//   runs/<id>.json      one run per file (with its track)
+//   settings.json       the pilot's callsign
+// Files are validated on the way in; a file that fails is logged and skipped, never fatal. Run
+// summaries are cached in memory after the first read (the tracks make run files large).
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { z } from "zod";
+import { courseRevision, parseCourse, type Course } from "../core/course/course";
+import { sampleCourses } from "../core/demo/sampleCourses";
+import { parseRun, type Run } from "../core/run/run";
+import { summarizeRun } from "../core/run/summaries";
+import type { RunSummary } from "../shared/racerApi";
+import { writeFileAtomic } from "./fsAtomic";
+import { log } from "./log";
+
+const settingsSchema = z.object({ pilot: z.string().min(1).max(32).default("Pilot") });
+export type Settings = z.infer<typeof settingsSchema>;
+
+/** File names are derived from ids; anything else in an id is refused rather than escaped. */
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
+
+export class Storage {
+  private readonly coursesDir: string;
+  private readonly runsDir: string;
+  private readonly settingsFile: string;
+  private runCache: Map<string, RunSummary> | null = null;
+
+  constructor(userData: string) {
+    this.coursesDir = path.join(userData, "courses");
+    this.runsDir = path.join(userData, "runs");
+    this.settingsFile = path.join(userData, "settings.json");
+  }
+
+  /** First launch: create the folders and seed the sample courses. */
+  init(): void {
+    const fresh = !existsSync(this.coursesDir);
+    mkdirSync(this.coursesDir, { recursive: true });
+    mkdirSync(this.runsDir, { recursive: true });
+    if (fresh) for (const c of sampleCourses()) this.writeCourse(c);
+  }
+
+  // --- settings -----------------------------------------------------------------------------------
+
+  readSettings(): Settings {
+    try {
+      return settingsSchema.parse(JSON.parse(readFileSync(this.settingsFile, "utf8")));
+    } catch {
+      return settingsSchema.parse({});
+    }
+  }
+
+  writeSettings(patch: Partial<Settings>): Settings {
+    const next = settingsSchema.parse({ ...this.readSettings(), ...patch });
+    writeFileAtomic(this.settingsFile, JSON.stringify(next, null, 2) + "\n");
+    return next;
+  }
+
+  // --- courses ------------------------------------------------------------------------------------
+
+  listCourses(): Course[] {
+    const out: Course[] = [];
+    for (const name of safeReaddir(this.coursesDir)) {
+      if (!name.endsWith(".json")) continue;
+      try {
+        out.push(parseCourse(JSON.parse(readFileSync(path.join(this.coursesDir, name), "utf8"))));
+      } catch (e) {
+        log.warn(`skipping unreadable course ${name}`, e);
+      }
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  getCourse(id: string): Course | null {
+    if (!SAFE_ID.test(id)) return null;
+    const file = path.join(this.coursesDir, `${id}.json`);
+    if (!existsSync(file)) return null;
+    return parseCourse(JSON.parse(readFileSync(file, "utf8")));
+  }
+
+  /**
+   * Store an imported course. Re-importing the same course is a no-op; a DIFFERENT course whose id is
+   * already taken gets a numbered id, so an import never overwrites a course that has runs.
+   */
+  addCourse(course: Course): Course {
+    let id = SAFE_ID.test(course.id) ? course.id : "course";
+    for (let n = 2; ; n++) {
+      const existing = this.getCourse(id);
+      if (!existing) break;
+      if (courseRevision(existing) === courseRevision(course) && existing.name === course.name) return existing;
+      id = `${course.id.slice(0, 70)}-${n}`;
+    }
+    const stored = { ...course, id };
+    this.writeCourse(stored);
+    return stored;
+  }
+
+  private writeCourse(c: Course): void {
+    writeFileAtomic(path.join(this.coursesDir, `${c.id}.json`), JSON.stringify(c, null, 2) + "\n");
+  }
+
+  // --- runs ---------------------------------------------------------------------------------------
+
+  listRuns(): RunSummary[] {
+    if (!this.runCache) {
+      this.runCache = new Map();
+      for (const name of safeReaddir(this.runsDir)) {
+        if (!name.endsWith(".json")) continue;
+        try {
+          const run = parseRun(JSON.parse(readFileSync(path.join(this.runsDir, name), "utf8")));
+          this.runCache.set(run.id, summarizeRun(run));
+        } catch (e) {
+          log.warn(`skipping unreadable run ${name}`, e);
+        }
+      }
+    }
+    return [...this.runCache.values()];
+  }
+
+  getRun(id: string): Run | null {
+    if (!SAFE_ID.test(id)) return null;
+    const file = path.join(this.runsDir, `${id}.json`);
+    if (!existsSync(file)) return null;
+    return parseRun(JSON.parse(readFileSync(file, "utf8")));
+  }
+
+  saveRun(run: Run): RunSummary {
+    if (!SAFE_ID.test(run.id)) throw new Error(`Unsafe run id ${run.id}`);
+    writeFileAtomic(path.join(this.runsDir, `${run.id}.json`), JSON.stringify(run) + "\n");
+    const summary = summarizeRun(run);
+    this.listRuns(); // make sure the cache exists before adding to it
+    this.runCache!.set(run.id, summary);
+    return summary;
+  }
+}
+
+function safeReaddir(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+}

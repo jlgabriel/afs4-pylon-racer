@@ -1,0 +1,11 @@
+# Local only — internal design notes and agent instructions never go to GitHub
+/docs/
+/.claude/
+
+node_modules/
+out/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.log
