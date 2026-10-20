@@ -454,6 +454,9 @@ export const JUMP_MIN_M = 250;
 export const JUMP_SPEED_FACTOR = 1.5;
 export const JUMP_SPEED_SLACK_MS = 20;
 
+/** What isJump needs of a fix; the minimap's trail keeps just this. */
+export type JumpSample = Pick<Fix, "lon" | "lat" | "t" | "gsMs">;
+
 /**
  * Whether a → b is a teleport rather than flight: farther than JUMP_MIN_M and farther than the
  * ground speed reported at both ends could have carried the aircraft in the time between them.
@@ -464,7 +467,7 @@ export const JUMP_SPEED_SLACK_MS = 20;
  * A real gap in the feed keeps the straight-line distance at or below speed × time; the faster end
  * is the bound (not the mean), so braking hard across a gap is never taken for a jump.
  */
-export function isJump(a: Fix, b: Fix): boolean {
+export function isJump(a: JumpSample, b: JumpSample): boolean {
   const d = haversine(a, b);
   if (d <= JUMP_MIN_M) return false;
   const dt = b.t - a.t;

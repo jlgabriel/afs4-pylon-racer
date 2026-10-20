@@ -7,11 +7,7 @@ import { draftOf, draftProblem, newDraft, type Draft } from "../../core/course/e
 import type { Run } from "../../core/run/run";
 import type { AppInfo, CourseSummary, LiveUpdate, Prefs, RunSummary } from "../../shared/racerApi";
 import { getRacer } from "../app/racer";
-
-export interface TrailPoint {
-  lon: number;
-  lat: number;
-}
+import { appendTrail, type TrailPoint } from "../race/trail";
 
 export interface Message {
   kind: "info" | "error";
@@ -19,8 +15,6 @@ export interface Message {
   /** Offer the AFS4-folder chooser next to the message. */
   chooseAfs4?: boolean;
 }
-
-const TRAIL_MAX = 2400;
 
 let initStarted = false;
 
@@ -36,7 +30,7 @@ interface State {
    *  It stays put when the attempt itself becomes the new best, so it is never compared to itself. */
   targetRun: Run | null;
   update: LiveUpdate | null;
-  trail: TrailPoint[];
+  trail: readonly TrailPoint[];
   message: Message | null;
 
   view: "race" | "design";
@@ -126,15 +120,8 @@ export const useStore = create<State>((set, get) => {
       set({ bridge: true, app });
       racer.onLive((update) => {
         const fix = update.live?.fix;
-        const trail = get().trail;
-        const last = trail[trail.length - 1];
-        if (fix && (!last || last.lon !== fix.lon || last.lat !== fix.lat)) {
-          const next = trail.length >= TRAIL_MAX ? trail.slice(-TRAIL_MAX / 2) : trail.slice();
-          next.push({ lon: fix.lon, lat: fix.lat });
-          set({ update, trail: next });
-        } else {
-          set({ update });
-        }
+        const trail = fix ? appendTrail(get().trail, fix) : get().trail;
+        set(trail !== get().trail ? { update, trail } : { update });
       });
       racer.onRunSaved(() => void refreshCourseData(false));
       const courses = await racer.listCourses();

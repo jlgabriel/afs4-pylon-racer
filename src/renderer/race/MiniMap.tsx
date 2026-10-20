@@ -12,7 +12,7 @@ import { metersPerWorldPx, tileZoomFor, tilesCovering, worldPx } from "../../cor
 import { gatePassLine } from "../../core/race/engine";
 import type { Fix } from "../../core/race/fix";
 import { ESRI_ATTRIBUTION, ESRI_MAX_NATIVE_ZOOM, ESRI_SATELLITE, tileUrl } from "../app/mapTiles";
-import type { TrailPoint } from "../state/store";
+import type { TrailPoint } from "./trail";
 
 const W = 400;
 const H = 300;
@@ -118,7 +118,7 @@ export function MiniMap({ course, nextGate, passed, fix, trail }: Props) {
   const trailPath = trail
     .map((p, i) => {
       const q = worldPx(p);
-      return `${i === 0 ? "M" : "L"}${sx(q).toFixed(1)},${sy(q).toFixed(1)}`;
+      return `${i === 0 || p.jump ? "M" : "L"}${sx(q).toFixed(1)},${sy(q).toFixed(1)}`;
     })
     .join("");
   const target = nextGate !== null ? lines[nextGate] : undefined;
