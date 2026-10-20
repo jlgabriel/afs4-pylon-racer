@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { courseRevision, type Course } from "../../core/course/course";
 import { draftOf, draftProblem, newDraft, type Draft } from "../../core/course/edit";
 import type { Run } from "../../core/run/run";
-import type { AppInfo, CourseSummary, LiveUpdate, RunSummary } from "../../shared/racerApi";
+import type { AppInfo, CourseSummary, LiveUpdate, Prefs, RunSummary } from "../../shared/racerApi";
 import { getRacer } from "../app/racer";
 
 export interface TrailPoint {
@@ -57,6 +57,7 @@ interface State {
   stopDemo(): Promise<void>;
   setPilot(name: string): Promise<void>;
   chooseAfs4Dir(): Promise<void>;
+  setPrefs(patch: Partial<Prefs>): Promise<void>;
   dismissMessage(): void;
 
   newCourse(): void;
@@ -191,6 +192,12 @@ export const useStore = create<State>((set, get) => {
       if (!racer) return;
       const app = await racer.chooseAfs4Dir();
       set({ app, message: app.afs4DirFound ? null : get().message, courses: await racer.listCourses() });
+    },
+
+    async setPrefs(patch) {
+      const racer = getRacer();
+      if (!racer) return;
+      set({ app: await racer.setPrefs(patch) });
     },
 
     dismissMessage() {

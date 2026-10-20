@@ -3,7 +3,7 @@
 import { join } from "node:path";
 import { app, BrowserWindow, session, shell } from "electron";
 import { Installer, defaultAfs4UserDir } from "./installer";
-import { registerIpc } from "./ipc";
+import { applyOnTop, registerIpc } from "./ipc";
 import { LOG_FILE_NAME, log } from "./log";
 import { mayNavigate } from "./navigation";
 import { RaceController } from "./race";
@@ -48,8 +48,9 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 960,
-    minHeight: 600,
+    // Small enough to sit in a corner over the simulator (the narrow layout drops the side list).
+    minWidth: 380,
+    minHeight: 320,
     show: false,
     autoHideMenuBar: true,
     backgroundColor: "#111114",
@@ -65,6 +66,7 @@ function createWindow(): void {
   // The page's <title> would otherwise replace the versioned window title on load.
   win.on("page-title-updated", (event) => event.preventDefault());
   win.once("ready-to-show", () => win.show());
+  if (storage.readSettings().onTop) applyOnTop(win, true);
 
   race.attach({
     live: (u) => {

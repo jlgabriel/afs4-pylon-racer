@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ecefToGeodetic,
   destination,
   fromLocal,
   haversine,
@@ -103,5 +104,22 @@ describe("relative bearing", () => {
   });
   it("reports a gate behind as about ±180", () => {
     expect(Math.abs(relativeBearing(REF, 180, north))).toBeCloseTo(180, 3);
+  });
+});
+
+describe("ecefToGeodetic", () => {
+  it("matches AFS4's own altitude for its world position (WGS84)", () => {
+    // Live at KDAG, 2026-10-19: the DLL said altitude 652.34 m for this position.
+    const g = ecefToGeodetic(-2366833.23, -4674369.61, 3626115.78);
+    expect(g.lat).toBeCloseTo(34.8666958, 6);
+    expect(g.lon).toBeCloseTo(-116.8550439, 6);
+    expect(g.heightM).toBeCloseTo(652.34, 1);
+  });
+
+  it("handles the equator and the prime meridian", () => {
+    const g = ecefToGeodetic(6378137 + 100, 0, 0);
+    expect(g.lat).toBeCloseTo(0, 9);
+    expect(g.lon).toBeCloseTo(0, 9);
+    expect(g.heightM).toBeCloseTo(100, 6);
   });
 });

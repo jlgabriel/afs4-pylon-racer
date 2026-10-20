@@ -141,3 +141,22 @@ export function centroid(points: readonly LonLat[]): LonLat {
   }
   return { lon: lon / points.length, lat: lat / points.length };
 }
+
+/**
+ * Earth-centered cartesian coordinates (m, WGS84 ECEF: x toward 0°E on the equator, z toward the
+ * north pole) to geodetic lon/lat (Bowring's formula, sub-millimeter at aircraft heights) and the
+ * height above the ellipsoid. This one place uses the ellipsoid, not the sphere: AFS4's world
+ * position is WGS84, and the geocentric latitude would be off by ~20 km at mid latitudes.
+ */
+export function ecefToGeodetic(x: number, y: number, z: number): LonLat & { heightM: number } {
+  const a = 6378137;
+  const f = 1 / 298.257223563;
+  const b = a * (1 - f);
+  const e2 = f * (2 - f);
+  const ep2 = (a * a - b * b) / (b * b);
+  const p = Math.hypot(x, y);
+  const th = Math.atan2(z * a, p * b);
+  const lat = Math.atan2(z + ep2 * b * Math.sin(th) ** 3, p - e2 * a * Math.cos(th) ** 3);
+  const n = a / Math.sqrt(1 - e2 * Math.sin(lat) ** 2);
+  return { lon: (Math.atan2(y, x) * 180) / Math.PI, lat: (lat * 180) / Math.PI, heightM: p / Math.cos(lat) - n };
+}

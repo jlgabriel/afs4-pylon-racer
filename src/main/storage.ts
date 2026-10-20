@@ -22,6 +22,8 @@ const settingsSchema = z.object({
   lastCourseId: z.string().nullable().default(null),
   /** Sample courses the user deleted: not seeded again. */
   removedSamples: z.array(z.string()).default([]),
+  /** Keep the window above the simulator (one monitor, AFS4 windowed). */
+  onTop: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 

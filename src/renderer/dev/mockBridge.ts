@@ -8,7 +8,7 @@ import { sampleCourses } from "../../core/demo/sampleCourses";
 import type { Run } from "../../core/run/run";
 import { rankRuns, summarizeCourse, summarizeRun } from "../../core/run/summaries";
 import { RaceSession } from "../../core/session/raceSession";
-import type { AppInfo, LiveUpdate, RacerApi, RacerResult, RunSummary, TelemetryStatus } from "../../shared/racerApi";
+import type { AppInfo, LiveUpdate, Prefs, RacerApi, RacerResult, RunSummary, TelemetryStatus } from "../../shared/racerApi";
 
 export function installMockBridge(): void {
   const courses = new Map<string, Course>(sampleCourses().map((c) => [c.id, c]));
@@ -17,6 +17,7 @@ export function installMockBridge(): void {
   const savedListeners = new Set<(r: RunSummary) => void>();
   let pilot = "Preview";
   let lastCourseId: string | null = null;
+  let prefs: Prefs = { onTop: false };
   let session: RaceSession | null = null;
   let demo: number | null = null;
   /** courseId → installed revision: a pretend scenery/poi/. */
@@ -25,7 +26,7 @@ export function installMockBridge(): void {
   const summaries = (): RunSummary[] => [...runs.values()].map(summarizeRun);
   const installedRefs = () => [...installed].map(([courseId, revision]) => ({ courseId, revision, folderName: `mock_${courseId}` }));
   const summary = (c: Course) => summarizeCourse(c, summaries(), installedRefs());
-  const info = (): AppInfo => ({ version: __APP_VERSION__, pilot, afs4Dir: "(preview)", afs4DirFound: true, lastCourseId });
+  const info = (): AppInfo => ({ version: __APP_VERSION__, pilot, afs4Dir: "(preview)", afs4DirFound: true, lastCourseId, prefs });
   const notFound = (id: string): RacerResult<never> => ({ ok: false, error: { code: "not-found", message: id } });
   const ok = <T>(value: T): RacerResult<T> => ({ ok: true, value });
 
@@ -53,6 +54,10 @@ export function installMockBridge(): void {
       return info();
     },
     chooseAfs4Dir: async () => info(),
+    setPrefs: async (patch) => {
+      prefs = { ...prefs, ...patch };
+      return info();
+    },
     listCourses: async () => [...courses.values()].sort((a, b) => a.name.localeCompare(b.name)).map(summary),
     saveCourse: async (draft) => {
       try {

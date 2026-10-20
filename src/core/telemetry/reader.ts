@@ -9,8 +9,12 @@
 // compass = 90° − true_heading (same instant on a runway: UDP heading 69.9°, DLL 20.1°). The sign
 // lives only in compassFromReader(). Pitch and bank match the UDP's signs as they are.
 // It runs at ~40 Hz with an aircraft loaded, ~10 Hz in the menus (with lat/lon 0).
+//
+// Position: `latitude`/`longitude` are printed with 6 decimals of a RADIAN, i.e. steps of ~6.4 m
+// north–south (measured at KDAG, 2026-10-19) — as coarse as the pylon-hit radius. `position` is the
+// same point as WGS84 ECEF meters with 2 decimals (1 cm), so it is used whenever it is there.
 import { z } from "zod";
-import { wrap180, wrap360 } from "../geo/geo";
+import { ecefToGeodetic, wrap180, wrap360 } from "../geo/geo";
 import type { Fix } from "../race/fix";
 
 export const READER_PORT = 12345;
@@ -26,6 +30,7 @@ const readerLine = z.object({
   bank: z.number(),
   true_heading: z.number(),
   ground_speed: z.number(),
+  position: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional(),
   velocity: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional(),
   aircraft_name: z.string().optional(),
 });
@@ -56,11 +61,12 @@ export function parseReaderLine(line: string, t: number): ReaderSample | null {
   const d = r.data;
   const heading = compassFromReader(d.true_heading);
   const name = d.aircraft_name && d.aircraft_name !== "Unknown" ? d.aircraft_name : null;
+  const where = fromPosition(d.position) ?? { lon: wrap180(d.longitude * DEG), lat: d.latitude * DEG };
   return {
     fix: {
       t,
-      lon: wrap180(d.longitude * DEG),
-      lat: d.latitude * DEG,
+      lon: where.lon,
+      lat: where.lat,
       altMslM: d.altitude,
       aglM: d.height,
       // The DLL has no ground track; heading is the closest it offers. The engine never reads it.
@@ -73,6 +79,15 @@ export function parseReaderLine(line: string, t: number): ReaderSample | null {
     aircraft: name,
     sourceHz: d.update_hz ?? null,
   };
+}
+
+/** The fine position from the ECEF vector; null when absent or not on the Earth (menus send 0s). */
+function fromPosition(p: { x: number; y: number; z: number } | undefined): { lon: number; lat: number } | null {
+  if (!p) return null;
+  const r = Math.hypot(p.x, p.y, p.z);
+  if (r < 6_300_000 || r > 6_450_000) return null;
+  const g = ecefToGeodetic(p.x, p.y, p.z);
+  return { lon: g.lon, lat: g.lat };
 }
 
 /** Splits a TCP byte stream into lines, keeping a partial tail between chunks. */

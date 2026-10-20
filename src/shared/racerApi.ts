@@ -96,6 +96,12 @@ export interface AppInfo {
   afs4DirFound: boolean;
   /** The course selected last time, to reopen it. */
   lastCourseId: string | null;
+  prefs: Prefs;
+}
+
+export interface Prefs {
+  /** The window stays above other windows, the simulator included. */
+  onTop: boolean;
 }
 
 export interface RacerApi {
@@ -103,6 +109,8 @@ export interface RacerApi {
   setPilot(name: string): Promise<AppInfo>;
   /** Opens a folder dialog to pick the AFS4 user folder (the one holding scenery/). */
   chooseAfs4Dir(): Promise<AppInfo>;
+  /** Changes some of the preferences; main applies "on top" to the window itself. */
+  setPrefs(patch: Partial<Prefs>): Promise<AppInfo>;
 
   listCourses(): Promise<CourseSummary[]>;
   getCourse(id: string): Promise<RacerResult<Course>>;

@@ -7,7 +7,7 @@ import { ZodError } from "zod";
 import { parseCourse, type Course } from "../core/course/course";
 import { importRctCourse, isRctCourse } from "../core/course/importRct";
 import { rankRuns, summarizeCourse } from "../core/run/summaries";
-import type { AppInfo, CourseSummary, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
+import type { AppInfo, CourseSummary, Prefs, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
 import { Afs4NotFoundError, type Installer } from "./installer";
 import { log } from "./log";
 import type { RaceController } from "./race";
@@ -40,6 +40,7 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
       afs4Dir: afs4Dir(),
       afs4DirFound: existsSync(afs4Dir()),
       lastCourseId: s.lastCourseId,
+      prefs: { onTop: s.onTop },
     };
   };
   const summary = (c: Course): CourseSummary => summarizeCourse(c, storage.listRuns(), installer.list());
@@ -77,6 +78,16 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
       storage.writeSettings({ afs4Dir: dir });
       log.info(`AFS4 user folder set to ${dir}`);
     }
+    return appInfo();
+  });
+
+  ipcMain.handle("racer:setPrefs", (e, patch: unknown) => {
+    const p = (typeof patch === "object" && patch !== null ? patch : {}) as Record<string, unknown>;
+    const next: Partial<Prefs> = {};
+    if (typeof p["onTop"] === "boolean") next.onTop = p["onTop"];
+    const s = storage.writeSettings(next);
+    const win = dialogParent(e.sender);
+    if (win && next.onTop !== undefined) applyOnTop(win, s.onTop);
     return appInfo();
   });
 
@@ -239,4 +250,9 @@ function errorText(e: unknown): string {
   if (e instanceof ZodError) return e.issues.map((i) => `${i.path.join(".") || "course"}: ${i.message}`).join("; ");
   if (e instanceof SyntaxError) return `Not valid JSON: ${e.message}`;
   return e instanceof Error ? e.message : String(e);
+}
+
+/** "screen-saver" is the level that stays above a borderless-windowed game on Windows. */
+export function applyOnTop(win: BrowserWindow, on: boolean): void {
+  win.setAlwaysOnTop(on, "screen-saver");
 }

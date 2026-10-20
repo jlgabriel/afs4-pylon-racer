@@ -53,7 +53,7 @@ export function RaceView() {
   return (
     <main className="race">
       <header className="race-head">
-        <div>
+        <div className="race-title">
           <h1>{course.name}</h1>
           <div className="muted">
             {course.gates.length} gates{course.laps > 1 ? ` · ${course.laps} laps` : ""}

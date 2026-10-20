@@ -12,13 +12,14 @@ export function App() {
   const dismiss = useStore((s) => s.dismissMessage);
   const chooseAfs4Dir = useStore((s) => s.chooseAfs4Dir);
   const view = useStore((s) => s.view);
+  const pinned = useStore((s) => s.app?.prefs.onTop ?? false);
 
   useEffect(() => {
     void init();
   }, [init]);
 
   return (
-    <div className="app">
+    <div className={`app ${pinned ? "pinned" : ""}`}>
       <TopBar />
       {message && (
         <div className={`message message-${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>
@@ -47,6 +48,8 @@ function TopBar() {
   const app = useStore((s) => s.app);
   const telemetry = useStore((s) => s.update?.telemetry ?? null);
   const setPilot = useStore((s) => s.setPilot);
+  const setPrefs = useStore((s) => s.setPrefs);
+  const onTop = app?.prefs.onTop ?? false;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -57,6 +60,16 @@ function TopBar() {
       </div>
       <div className="topbar-right">
         <TelemetryPills t={telemetry} />
+        {app && (
+          <button
+            className={`toggle ${onTop ? "on" : ""}`}
+            aria-pressed={onTop}
+            title="Keep this window above the simulator (run AFS4 windowed or borderless)"
+            onClick={() => void setPrefs({ onTop: !onTop })}
+          >
+            {onTop ? "Pinned on top" : "Pin on top"}
+          </button>
+        )}
         {editing ? (
           <form
             onSubmit={(e) => {

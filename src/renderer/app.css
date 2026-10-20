@@ -196,6 +196,7 @@
 }
 .next-gate-needs {
   color: var(--warn);
+  font-size: var(--size-lg);
   font-weight: 600;
 }
 .live-penalties {
@@ -235,7 +236,8 @@
 }
 .result-rows {
   display: grid;
-  grid-template-columns: max-content max-content;
+  /* The reason wraps instead of pushing the seconds out of the card. */
+  grid-template-columns: minmax(0, max-content) max-content;
   column-gap: var(--space-5);
   row-gap: 2px;
   font-size: var(--size-sm);
@@ -661,4 +663,64 @@
 .designer-rules summary {
   cursor: pointer;
   margin-bottom: var(--space-2);
+}
+
+.toggle.on {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+/* --- narrow window: pinned in a corner over the simulator ------------------------------------- */
+/* Only what is needed while flying: timer, next gate, minimap and flight values. */
+@media (max-width: 760px) {
+  .courses,
+  .race-desc,
+  .course-tools,
+  .runs,
+  .brand,
+  .pills {
+    display: none;
+  }
+  .topbar {
+    justify-content: flex-end;
+    padding: var(--space-1) var(--space-2);
+  }
+  .race {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+  .race-head h1 {
+    font-size: var(--size-lg);
+  }
+  .race-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+}
+
+/* --- pinned on top of the simulator: only what is needed while flying ------------------------- */
+.app.pinned .courses,
+.app.pinned .race-title,
+.app.pinned .runs,
+.app.pinned .brand,
+.app.pinned .pills,
+.app.pinned .pilot {
+  display: none;
+}
+.app.pinned .topbar {
+  justify-content: flex-end;
+  padding: var(--space-1) var(--space-2);
+}
+.app.pinned .race {
+  padding: var(--space-2);
+  gap: var(--space-2);
+}
+.app.pinned .race-head {
+  justify-content: flex-end;
+}
+/* Smaller still: the map and the flight values alone (the voice says what each gate asks for). */
+@media (max-width: 560px) {
+  .app.pinned .race-main {
+    display: none;
+  }
 }

@@ -13,6 +13,7 @@ const racer: RacerApi = {
   getAppInfo: () => ipcRenderer.invoke("racer:getAppInfo"),
   setPilot: (name) => ipcRenderer.invoke("racer:setPilot", name),
   chooseAfs4Dir: () => ipcRenderer.invoke("racer:chooseAfs4Dir"),
+  setPrefs: (patch) => ipcRenderer.invoke("racer:setPrefs", patch),
   listCourses: () => ipcRenderer.invoke("racer:listCourses"),
   getCourse: (id) => ipcRenderer.invoke("racer:getCourse", id),
   importCourse: () => ipcRenderer.invoke("racer:importCourse"),

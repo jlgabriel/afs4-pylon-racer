@@ -34,7 +34,7 @@ export function sampleCourses(): Course[] {
       name: "KDAG Rules Test",
       author: "Pylon Racer",
       description:
-        "One gate of each kind, westbound, 1.5 km north of KDAG and parallel to Daggett Sprint: 2 wings level, 3 knife edge, 4 turn pylon kept on your left, 5 below 40 m.",
+        "One gate of each kind, westbound, 1.5 km north of KDAG and parallel to Daggett Sprint: 2 wings level, 3 knife edge, 4 single turn pylon, pass to its right (north), 5 below 40 m.",
       createdAt: STAMP,
       updatedAt: STAMP,
       laps: 1,

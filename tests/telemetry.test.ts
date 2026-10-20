@@ -59,8 +59,23 @@ describe("AeroflyReader.dll", () => {
   });
 
   it("normalizes a longitude reported in [0, 2π)", () => {
-    const west = READER.replace('"longitude":0.133873', `"longitude":${2 * Math.PI - 0.5}`);
+    const west = READER.replace('"longitude":0.133873', `"longitude":${2 * Math.PI - 0.5}`).replace(/"position":\{[^}]*\},/, "");
     expect(parseReaderLine(west, 0)!.fix.lon).toBeCloseTo(-28.648, 2);
+  });
+
+  // Captured live at KDAG on 2026-10-19 (extra330, paused). latitude 0.608539 rad is a 6.4 m step.
+  const KDAG =
+    '{"update_hz":40,"data_valid":1,"latitude":0.608539,"longitude":4.24368,"altitude":652.34,"height":54.1,"pitch":0,"bank":0,"true_heading":2.994187,"ground_speed":76.15,"position":{"x":-2366833.23,"y":-4674369.61,"z":3626115.78},"velocity":{"x":78.495,"y":-2.506,"z":-5.224}}';
+
+  it("takes the position from the centimeter ECEF vector, not the rounded radians", () => {
+    const s = parseReaderLine(KDAG, 0)!;
+    expect(s.fix.lat).toBeCloseTo(34.8666958, 6);
+    expect(s.fix.lon).toBeCloseTo(-116.8550439, 6);
+    // Within half a rounding step of what lat/lon say (±3.2 m).
+    expect(Math.abs(s.fix.lat - (0.608539 * 180) / Math.PI) * 111_000).toBeLessThan(3.2);
+    // Menus send a zero vector: back to lat/lon (here 0,0, which the hub drops as null island).
+    const menu = KDAG.replace(/"position":\{[^}]*\}/, '"position":{"x":0,"y":0,"z":0}');
+    expect(parseReaderLine(menu, 0)!.fix.lat).toBeCloseTo((0.608539 * 180) / Math.PI, 9);
   });
 
   it("drops invalid samples and treats 'Unknown' as no aircraft", () => {
