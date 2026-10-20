@@ -1,6 +1,6 @@
 // Courses seeded so there is something to fly (or to watch in demo mode) from the first launch.
-// Two sit just north-east of EDDM (Munich); two are in the open Mojave desert at KDAG, one of them
-// a flight test of every rule.
+// Two sit just north-east of EDDM (Munich); three are in the open Mojave desert at KDAG: a sprint,
+// a flight test of every rule and a flight test of Rodeo's pylons.
 import { COURSE_FORMAT, COURSE_VERSION, parseCourse, type Course } from "../course/course";
 
 const STAMP = "2026-10-18T00:00:00Z";
@@ -46,6 +46,26 @@ export function sampleCourses(): Course[] {
         { id: "g4", type: "turn", center: { lon: -116.8395073, lat: 34.8665 }, widthM: 150, headingDeg: 270, pylon: null, groundElevM: 596, turnSide: "left" },
         { id: "g5", type: "gate", center: { lon: -116.8460765, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 596, topM: 40 },
         { id: "g6", type: "finish", center: { lon: -116.8526456, lat: 34.8665 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 597 },
+      ],
+    }),
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "kdag-rodeo-test",
+      name: "KDAG Rodeo Test",
+      author: "Pylon Racer",
+      description:
+        "Rodeo's three pylons, westbound, 1.5 km north of KDAG Rules Test: 1 Reno 15 m, 2 Air Race 18 m, 3 Air Race 25 m, 4 single turn pylon 18 m, pass to its right (north), 5 Reno 15 m. Pylons have collision in AFS4.",
+      createdAt: "2026-10-20T00:00:00Z",
+      updatedAt: "2026-10-20T00:00:00Z",
+      laps: 1,
+      // Lat 34.8815, same longitudes as KDAG Rules Test (600 m apart), terrain from Open-Meteo (584–590 m).
+      gates: [
+        { id: "g1", type: "start", center: { lon: -116.8198, lat: 34.8815 }, widthM: 100, headingDeg: 270, pylon: "rodeo-reno", groundElevM: 590 },
+        { id: "g2", type: "gate", center: { lon: -116.8263691, lat: 34.8815 }, widthM: 100, headingDeg: 270, pylon: "rodeo-18", groundElevM: 584 },
+        { id: "g3", type: "gate", center: { lon: -116.8329382, lat: 34.8815 }, widthM: 100, headingDeg: 270, pylon: "rodeo-25", groundElevM: 587 },
+        { id: "g4", type: "turn", center: { lon: -116.8395073, lat: 34.8815 }, widthM: 150, headingDeg: 270, pylon: "rodeo-18", groundElevM: 589, turnSide: "left" },
+        { id: "g5", type: "finish", center: { lon: -116.8460765, lat: 34.8815 }, widthM: 100, headingDeg: 270, pylon: "rodeo-reno", groundElevM: 590 },
       ],
     }),
     parseCourse({

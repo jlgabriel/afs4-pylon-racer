@@ -124,4 +124,10 @@ describe("pylon models", () => {
     expect(plan.tsl).toContain("<[string8][geometry][rodeo_air_race_18_4/pylon_air_race_18_4]>");
     expect(plan.pylonCount).toBe(5);
   });
+
+  it("the KDAG Rodeo Test sample installs only Rodeo's three models", () => {
+    const plan = planPoi(sampleCourses().find((c) => c.id === "kdag-rodeo-test")!);
+    expect(plan.modelDirs).toEqual(["rodeo_air_race_18_4", "rodeo_air_race_25_5", "rodeo_reno_3"]);
+    expect(plan.pylonCount).toBe(9); // four gates and one turn pylon
+  });
 });
