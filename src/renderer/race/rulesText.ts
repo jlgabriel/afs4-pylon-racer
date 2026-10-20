@@ -1,6 +1,6 @@
 // The words for the rules: what a gate asks of the pilot, and why a penalty was given.
 import type { Course, Gate } from "../../core/course/course";
-import type { Penalty } from "../../core/race/engine";
+import type { DnfReason, Penalty, RaceSnapshot } from "../../core/race/engine";
 
 /** The side of a turn pylon to fly by: keeping it on your left means passing to its right. "Pass to
  *  its right" says what to DO; "keep it on your left" had to be translated in the air (flight test,
@@ -43,6 +43,27 @@ export function penaltyReason(p: Penalty, course: Course): string {
       if (!g) return "turn pylon cut";
       return `turn pylon cut: passed to its ${passSide(g) === "right" ? "left" : "right"} (pass to its ${passSide(g)})`;
   }
+}
+
+/** Why the race did not finish, for the result: "reset in the sim after gate 2". Null when unknown. */
+export function dnfText(race: Pick<RaceSnapshot, "dnfReason" | "passes" | "sequence" | "step">): string | null {
+  switch (race.dnfReason) {
+    case "reset": {
+      const last = race.passes[race.passes.length - 1];
+      return last ? `reset in the sim after gate ${last.gateIndex + 1}` : "reset in the sim";
+    }
+    case "missed-gate": {
+      const gi = race.sequence[race.step];
+      return gi !== undefined ? `missed gate ${gi + 1}` : "missed a gate";
+    }
+    case null:
+      return null;
+  }
+}
+
+/** The same, in a word or two, for the list of runs. */
+export function dnfShort(reason: DnfReason | null): string | null {
+  return reason === "reset" ? "reset in the sim" : reason === "missed-gate" ? "missed a gate" : null;
 }
 
 function measured(p: Penalty, fmt: (v: number) => string): string {

@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { demoFlight } from "../src/core/demo/demoFlight";
-import { RaceEngine, type RaceEvent } from "../src/core/race/engine";
+import { isJump, RaceEngine, type RaceEvent } from "../src/core/race/engine";
 import type { Fix } from "../src/core/race/fix";
 import { fixAt, makeCourse, straightCourse, type GateSpec } from "./helpers";
 
 const kinds = (events: RaceEvent[]): string[] => events.map((e) => e.kind);
 
+/** Fly a path of local points dt apart, reporting the ground speed each leg implies (some legs are
+ *  long, and a speed the path could not fly would read as the sim moving the aircraft). */
 function fly(engine: RaceEngine, path: [number, number][], dt = 1): RaceEvent[] {
   const events: RaceEvent[] = [];
-  path.forEach(([x, y], i) => events.push(...engine.update(fixAt(x, y, i * dt))));
+  path.forEach(([x, y], i) => {
+    const [px, py] = path[Math.max(0, i - 1)]!;
+    const gsMs = Math.max(100, Math.hypot(x - px, y - py) / dt);
+    events.push(...engine.update(fixAt(x, y, i * dt, { gsMs })));
+  });
   return events;
 }
 
@@ -374,3 +380,72 @@ describe("pylon hits", () => {
   });
 });
 
+
+describe("the sim resetting the aircraft", () => {
+  // Flight test 2026-10-20 (KDAG Rules Test): a pylon has collision in AFS4, so hitting it stops the
+  // sim and puts the aircraft back on the runway, kilometers away.
+  const KMH_300 = 300 / 3.6;
+
+  it("ends a race in progress as a DNF, without judging the jump", () => {
+    const eng = new RaceEngine(straightCourse());
+    const events = [
+      ...eng.update(fixAt(-37, -600, 0)),
+      ...eng.update(fixAt(-37, -400, 1)), // start, 3 m from its left pylon: a hit
+      ...eng.update(fixAt(-37, -200, 2)),
+      // reset: the straight line from here crosses gate 2 and the finish northbound
+      ...eng.update(fixAt(0, 2500, 2.2, { gsMs: 0 })),
+    ];
+    expect(kinds(events)).toEqual(["started", "penalty", "dnf"]);
+    expect(events.at(-1)).toEqual({ kind: "dnf", reason: "reset", elapsed: expect.closeTo(1.5, 3) });
+    const s = eng.snapshot();
+    expect(s).toMatchObject({ status: "dnf", dnfReason: "reset", raw: expect.closeTo(1.5, 3) });
+    expect(s.passes.map((p) => p.gateIndex)).toEqual([0]);
+    expect(s.penalties.map((p) => p.kind)).toEqual(["pylon-hit"]);
+    expect(eng.nextGateIndex).toBeNull();
+    // the aircraft sitting on the runway afterwards changes nothing
+    expect(eng.update(fixAt(0, 2500, 30, { gsMs: 0 }))).toEqual([]);
+    expect(eng.raw(30)).toBeCloseTo(1.5, 3);
+  });
+
+  it("ends the race at the last fix before the jump, even after the sim sat frozen", () => {
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -600, 0));
+    eng.update(fixAt(0, -400, 1)); // start at t = 0.5
+    eng.update(fixAt(0, -300, 2));
+    eng.update(fixAt(0, -290, 2.2, { gsMs: 0 })); // crashed: frozen in place
+    eng.update(fixAt(0, -290, 5, { gsMs: 0 }));
+    // 20 s later, 3 km away: only 150 m/s, but the aircraft itself reported 0
+    expect(kinds(eng.update(fixAt(0, 2900, 25, { gsMs: 0 })))).toEqual(["dnf"]);
+    expect(eng.raw()).toBeCloseTo(4.5, 3);
+  });
+
+  it("before the start, only moves the aircraft", () => {
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -3000, 0, { gsMs: 0 }));
+    // to just past the start line, northbound: not a start
+    expect(eng.update(fixAt(0, -450, 0.2, { gsMs: 0 }))).toEqual([]);
+    expect(eng.snapshot()).toMatchObject({ status: "waiting", dnfReason: null, passes: [] });
+    // flying from there works as usual
+    eng.update(fixAt(0, -700, 3));
+    expect(kinds(eng.update(fixAt(0, -400, 6)))).toEqual(["started"]);
+  });
+
+  it("does not fire on real flight", () => {
+    // 300 km/h at 5 Hz, and at 40 Hz with the hub's jittery timestamps (two lines 0.1 ms apart)
+    expect(isJump(fixAt(0, 0, 0, { gsMs: KMH_300 }), fixAt(0, KMH_300 / 5, 0.2, { gsMs: KMH_300 }))).toBe(false);
+    expect(isJump(fixAt(0, 0, 0, { gsMs: KMH_300 }), fixAt(0, KMH_300 / 40, 0.0001, { gsMs: KMH_300 }))).toBe(false);
+    // a jet at 400 m/s at 1 Hz, and a 12 s gap in the feed at 100 m/s
+    expect(isJump(fixAt(0, 0, 0, { gsMs: 400 }), fixAt(0, 400, 1, { gsMs: 400 }))).toBe(false);
+    expect(isJump(fixAt(0, 0, 0), fixAt(0, 1200, 12))).toBe(false);
+    // a whole race at 5 Hz and 300 km/h
+    const eng = new RaceEngine(straightCourse());
+    const n = Math.ceil(1300 / (KMH_300 / 5));
+    const events = fly(eng, Array.from({ length: n }, (_, i) => [0, -640 + (KMH_300 / 5) * i] as [number, number]), 0.2);
+    expect(kinds(events)).toEqual(["started", "pass", "pass", "finished"]);
+  });
+
+  it("fires on a reset at any rate", () => {
+    expect(isJump(fixAt(0, 0, 0), fixAt(0, 3100, 0.025, { gsMs: 0 }))).toBe(true);
+    expect(isJump(fixAt(0, 0, 0), fixAt(0, 3100, 0.2, { gsMs: 0 }))).toBe(true);
+  });
+});

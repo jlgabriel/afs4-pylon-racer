@@ -10,6 +10,7 @@ export function summarizeRun(r: Run): RunSummary {
     courseId: r.courseId,
     courseRevision: r.courseRevision,
     status: r.result.status,
+    dnfReason: r.result.dnfReason,
     total: r.result.total,
     raw: r.result.raw,
     penaltyTotal: r.result.penaltyTotal,

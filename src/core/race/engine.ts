@@ -18,6 +18,10 @@
 // - turn pylons: crossing the half-line on the WRONG side of the pylon still counts the step, with
 //   the turn-cut penalty instead of a missed gate
 // A height that cannot be known (no AGL from the source and no DEM at the gate) is never penalized.
+//
+// A jump between two consecutive fixes that no aircraft could fly (AFS4 resets the aircraft after a
+// crash — a pylon has collision — or the pilot moves it) is not flight: that segment is never judged,
+// and a race in progress ends as a DNF ("reset") at the last fix before the jump. See isJump.
 import { courseRevision, raceSequence, type Course, type Gate, type Rules } from "../course/course";
 import {
   centroid,
@@ -25,6 +29,7 @@ import {
   lerpAngle,
   pylonsOfGate,
   destination,
+  haversine,
   segmentIntersection,
   toLocal,
   type LonLat,
@@ -34,6 +39,10 @@ import { pylonHeightFor } from "../export/pylons";
 import type { Fix } from "./fix";
 
 export type RaceStatus = "waiting" | "running" | "finished" | "dnf";
+
+/** Why a race did not finish: a missed gate under missedGateIsDnf, or the sim moved the aircraft. */
+export const DNF_REASONS = ["missed-gate", "reset"] as const;
+export type DnfReason = (typeof DNF_REASONS)[number];
 
 export const PENALTY_KINDS = ["missed-gate", "wrong-direction", "attitude", "too-high", "pylon-hit", "turn-cut"] as const;
 export type PenaltyKind = (typeof PENALTY_KINDS)[number];
@@ -72,12 +81,14 @@ export type RaceEvent =
   | { kind: "lap"; lap: number; lapTime: number; pass: Pass }
   | { kind: "penalty"; penalty: Penalty }
   | { kind: "finished"; pass: Pass; total: number }
-  | { kind: "dnf"; reason: string; elapsed: number };
+  | { kind: "dnf"; reason: DnfReason; elapsed: number };
 
 export interface RaceSnapshot {
   courseId: string;
   revision: string;
   status: RaceStatus;
+  /** Set when status is "dnf". */
+  dnfReason: DnfReason | null;
   /** Index into `sequence` of the next step to fly. */
   step: number;
   sequence: number[];
@@ -157,6 +168,7 @@ export class RaceEngine {
   private readonly lines: GateLine[];
 
   private status: RaceStatus = "waiting";
+  private dnfReason: DnfReason | null = null;
   private step = 0;
   private prev: Fix | null = null;
   private last: Fix | null = null;
@@ -193,6 +205,7 @@ export class RaceEngine {
 
   reset(): void {
     this.status = "waiting";
+    this.dnfReason = null;
     this.step = 0;
     this.prev = null;
     this.last = null;
@@ -237,6 +250,11 @@ export class RaceEngine {
     this.last = fix;
     this.prev = fix;
     if (prev === null || this.status === "finished" || this.status === "dnf") return [];
+    if (isJump(prev, fix)) {
+      // Waiting: the new position is simply where the aircraft is now. Racing: the attempt is over.
+      if (this.status !== "running") return [];
+      return [this.endAsDnf("reset", prev.t)];
+    }
 
     // Which crossings count is decided one by one, in time order, because one sample can start the
     // race and pass the next gates too.
@@ -272,6 +290,7 @@ export class RaceEngine {
       courseId: this.course.id,
       revision: this.revision,
       status: this.status,
+      dnfReason: this.dnfReason,
       step: this.step,
       sequence: this.sequence,
       laps: this.course.laps,
@@ -316,6 +335,13 @@ export class RaceEngine {
     return out.sort((a, b) => a.f - b.f);
   }
 
+  private endAsDnf(reason: DnfReason, t: number): RaceEvent {
+    this.status = "dnf";
+    this.dnfReason = reason;
+    this.endT = t;
+    return { kind: "dnf", reason, elapsed: this.raw(t) };
+  }
+
   private findStep(gateIndex: number): number | null {
     if (this.status === "waiting") return gateIndex === this.sequence[0] ? 0 : null;
     for (let s = this.step; s < this.sequence.length; s++) if (this.sequence[s] === gateIndex) return s;
@@ -336,9 +362,7 @@ export class RaceEngine {
 
     for (let s = this.step; s < step; s++) {
       if (this.course.rules.missedGateIsDnf) {
-        this.status = "dnf";
-        this.endT = at.t;
-        events.push({ kind: "dnf", reason: "missed-gate", elapsed: this.raw(at.t) });
+        events.push(this.endAsDnf("missed-gate", at.t));
         return events;
       }
       events.push(this.addPenalty("missed-gate", s, this.sequence[s]!, at.t, null));
@@ -418,6 +442,34 @@ export class RaceEngine {
     this.penalties.push(penalty);
     return { kind: "penalty", penalty };
   }
+}
+
+/**
+ * Below this, a move between two fixes is never a jump. A real sample moves 2–10 m at 40 Hz and
+ * 20–60 m at 5 Hz, and the hub can stamp two DLL lines only 0.1 ms apart, so a speed test alone
+ * would fire on timestamp jitter.
+ */
+export const JUMP_MIN_M = 250;
+/** Slack over the faster ground speed reported at either end, for noise and for speeding up mid-gap. */
+export const JUMP_SPEED_FACTOR = 1.5;
+export const JUMP_SPEED_SLACK_MS = 20;
+
+/**
+ * Whether a → b is a teleport rather than flight: farther than JUMP_MIN_M and farther than the
+ * ground speed reported at both ends could have carried the aircraft in the time between them.
+ *
+ * Judged against the reported ground speed rather than a fixed ceiling (e.g. 300 m/s) because AFS4
+ * has jets that fly faster than that, and because after a crash the sim may sit frozen for a while
+ * before the reset arrives: a 3 km jump 20 s later is only 150 m/s, yet the aircraft reported 0.
+ * A real gap in the feed keeps the straight-line distance at or below speed × time; the faster end
+ * is the bound (not the mean), so braking hard across a gap is never taken for a jump.
+ */
+export function isJump(a: Fix, b: Fix): boolean {
+  const d = haversine(a, b);
+  if (d <= JUMP_MIN_M) return false;
+  const dt = b.t - a.t;
+  const reachable = JUMP_SPEED_FACTOR * Math.max(a.gsMs, b.gsMs) + JUMP_SPEED_SLACK_MS;
+  return d > reachable * dt;
 }
 
 /** The aircraft state a fraction f of the way from a to b. Angles take the short way round. */

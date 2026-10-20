@@ -76,6 +76,34 @@ describe("a finished session becomes a valid run", () => {
   });
 });
 
+describe("a reset in the sim", () => {
+  it("is saved as a DNF run with its reason and penalties, without the jump in the track", () => {
+    const session = new RaceSession(munich, ctx);
+    const src = { kind: "reader", hz: 40, aircraft: "extra330" } as const;
+    const flight = demoFlight(munich, { rateHz: 10 });
+    const cut = Math.floor(flight.length / 2);
+    let run = null;
+    for (const f of flight.slice(0, cut)) run = session.feed(f, src).run ?? run;
+    expect(run).toBeNull();
+    const before = flight[cut - 1]!;
+    const runway = { ...fixAt(0, 0, before.t + 0.1), gsMs: 0 }; // REF, kilometers from Munich
+    run = session.feed(runway, src).run;
+    const parsed = parseRun(JSON.parse(JSON.stringify(run)));
+    expect(parsed.result).toMatchObject({ status: "dnf", dnfReason: "reset" });
+    expect(parsed.track.samples.at(-1)![0]).toBe(before.t);
+    expect(session.live().nextGate).toBeNull();
+  });
+
+  it("runs saved before the reason existed still load", () => {
+    const session = new RaceSession(munich, ctx);
+    let run = null;
+    for (const f of demoFlight(munich, { rateHz: 5 })) run = session.feed(f, { kind: "demo", hz: 5, aircraft: null }).run ?? run;
+    const old = JSON.parse(JSON.stringify(run));
+    delete old.result.dnfReason;
+    expect(parseRun(old).result.dnfReason).toBeNull();
+  });
+});
+
 describe("the recorder", () => {
   it("keeps a short pre-roll and everything after the start", () => {
     const r = new Recorder(3, 0);

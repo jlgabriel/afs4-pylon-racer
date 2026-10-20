@@ -3,7 +3,7 @@
 // .pylonrun files — so it is validated with zod on the way back in.
 import { z } from "zod";
 import type { Fix } from "../race/fix";
-import { PENALTY_KINDS, type RaceSnapshot } from "../race/engine";
+import { DNF_REASONS, PENALTY_KINDS, type RaceSnapshot } from "../race/engine";
 
 export const RUN_FORMAT = "pylon-racer/run";
 export const RUN_VERSION = 1;
@@ -47,6 +47,8 @@ export const runSchema = z.object({
   appVersion: z.string(),
   result: z.object({
     status: z.enum(["finished", "dnf"]),
+    /** Why a DNF did not finish (absent in runs saved before v0.4). */
+    dnfReason: z.enum(DNF_REASONS).nullable().default(null),
     raw: z.number(),
     penaltyTotal: z.number(),
     total: z.number(),
@@ -95,6 +97,7 @@ export function buildRun(snap: RaceSnapshot, track: readonly Fix[], meta: RunMet
     appVersion: meta.appVersion,
     result: {
       status: snap.status,
+      dnfReason: snap.dnfReason,
       raw: snap.raw,
       penaltyTotal: snap.penaltyTotal,
       total: snap.total,

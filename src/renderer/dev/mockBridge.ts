@@ -5,6 +5,7 @@
 import { courseRevision, parseCourse, type Course } from "../../core/course/course";
 import { demoFlight } from "../../core/demo/demoFlight";
 import { sampleCourses } from "../../core/demo/sampleCourses";
+import { destination } from "../../core/geo/geo";
 import type { Run } from "../../core/run/run";
 import { rankRuns, summarizeCourse, summarizeRun } from "../../core/run/summaries";
 import { RaceSession } from "../../core/session/raceSession";
@@ -127,10 +128,15 @@ export function installMockBridge(): void {
       session.reset();
       const s = session;
       // ?sloppy flies the demo badly on purpose (banked and high), to see the penalties on screen.
-      const sloppy = new URLSearchParams(window.location.search).has("sloppy");
-      const fixes = demoFlight(s.course, { rateHz: 20 }).map((f) =>
-        sloppy ? { ...f, rollDeg: f.rollDeg + 35, altMslM: f.altMslM + 30, aglM: f.aglM === null ? null : f.aglM + 30 } : f,
-      );
+      // ?reset crashes halfway: AFS4 puts the aircraft back on a runway 3 km away, stopped.
+      const query = new URLSearchParams(window.location.search);
+      const sloppy = query.has("sloppy");
+      const flown = demoFlight(s.course, { rateHz: 20 });
+      const runway = destination(flown[0]!, 3000, 180);
+      const fixes = flown.map((f, i) => {
+        if (query.has("reset") && i > flown.length / 2) return { ...f, ...runway, gsMs: 0, aglM: 0, rollDeg: 0, pitchDeg: 0 };
+        return sloppy ? { ...f, rollDeg: f.rollDeg + 35, altMslM: f.altMslM + 30, aglM: f.aglM === null ? null : f.aglM + 30 } : f;
+      });
       const t0 = performance.now() / 1000;
       let i = 0;
       demo = window.setInterval(() => {

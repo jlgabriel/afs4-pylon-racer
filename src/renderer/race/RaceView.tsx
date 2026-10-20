@@ -12,7 +12,7 @@ import type { RunSummary, TelemetryStatus } from "../../shared/racerApi";
 import { KMH_PER_MS, fmtDelta, fmtDistance, fmtTime } from "../app/format";
 import { useStore } from "../state/store";
 import { MiniMap } from "./MiniMap";
-import { gateRequirements, penaltyReason } from "./rulesText";
+import { dnfShort, dnfText, gateRequirements, penaltyReason } from "./rulesText";
 
 const GATE_NAME: Record<GateType, string> = {
   start: "Start",
@@ -199,7 +199,7 @@ function GateStrip({ race }: { race: RaceSnapshot | null }) {
             ? "penalized"
             : step < race.step
             ? "done"
-            : step === race.step && race.status !== "finished"
+            : step === race.step && (race.status === "running" || race.status === "waiting")
               ? "next"
               : "todo";
         return <span key={step} className={`gate-cell ${state}`} title={`Gate ${gi + 1}`} />;
@@ -210,10 +210,11 @@ function GateStrip({ race }: { race: RaceSnapshot | null }) {
 
 function Result({ race, target, course }: { race: RaceSnapshot; target: Run | null; course: Course }) {
   const newBest = race.status === "finished" && (!target || race.total < target.result.total);
+  const why = race.status === "dnf" ? dnfText(race) : null;
   return (
     <div className="result">
       {race.status === "dnf" ? (
-        <div className="result-title bad">Did not finish</div>
+        <div className="result-title bad">Did not finish{why ? ` · ${why}` : ""}</div>
       ) : newBest ? (
         <div className="result-title best">New best</div>
       ) : (
@@ -227,7 +228,7 @@ function Result({ race, target, course }: { race: RaceSnapshot; target: Run | nu
         {race.penalties.map((p, i) => (
           <PenaltyRow key={i} penalty={p} course={course} />
         ))}
-        {race.penalties.length === 0 && (
+        {race.penalties.length === 0 && race.status === "finished" && (
           <>
             <span className="good">Clean run</span>
             <span className="good">+0.0 s</span>
@@ -314,7 +315,10 @@ function Runs({ runs }: { runs: RunSummary[] }) {
           {runs.slice(0, 20).map((r, i) => (
             <tr key={r.id} className={r.status === "dnf" ? "muted" : undefined}>
               <td>{r.status === "dnf" ? "DNF" : i + 1}</td>
-              <td>{fmtTime(r.total)}</td>
+              <td>
+                {fmtTime(r.total)}
+                {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}
+              </td>
               <td>{r.penaltyTotal > 0 ? `+${r.penaltyTotal.toFixed(1)}` : "—"}</td>
               <td>{r.aircraftId ?? "—"}</td>
               <td>{classLabel(r.classId)}</td>

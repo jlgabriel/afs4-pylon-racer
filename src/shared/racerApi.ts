@@ -54,6 +54,7 @@ export interface RunSummary {
   courseId: string;
   courseRevision: string;
   status: Run["result"]["status"];
+  dnfReason: Run["result"]["dnfReason"];
   total: number;
   raw: number;
   penaltyTotal: number;
