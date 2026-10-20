@@ -1,0 +1,9 @@
+Air-race pylon models by Rodeo (Aerofly FS 4 community), made with AC3D.
+Packaged as part of the "xref_air_race_pylons" XREF library by @Apfelflieger (2026-07-14).
+
+Used in Pylon Racer with the author's permission. Asked on the Aerofly FS 4 forum whether the
+app could ship these pylons, Rodeo answered (post #257): "You can use whatever you need."
+
+The models are Rodeo's; they are not covered by Pylon Racer's GPL. Pylon Racer copies them,
+unmodified, into the scenery it installs for a course that uses them, together with this note.
+Please ask Rodeo before reusing them anywhere else.

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { sampleCourses } from "../src/core/demo/sampleCourses";
 import { DEFAULT_PYLON, PYLONS, pylonFor } from "../src/core/export/pylons";
@@ -82,9 +82,46 @@ describe("pylon models", () => {
     expect(pylonFor({ type: "gate", pylon: "blue" }).id).toBe("blue");
   });
 
-  it("every model folder ships its .tmb", () => {
+  it("every model folder ships its .tmb and a texture", () => {
     for (const p of PYLONS) {
       expect(() => readFileSync(new URL(`../assets/pylons/${p.dir}/${p.tmb}.tmb`, import.meta.url))).not.toThrow();
+      expect(readdirSync(new URL(`../assets/pylons/${p.dir}/`, import.meta.url)).some((f) => f.endsWith(".ttx"))).toBe(true);
     }
+  });
+
+  it("ids and folders are unique", () => {
+    expect(new Set(PYLONS.map((p) => p.id)).size).toBe(PYLONS.length);
+    expect(new Set(PYLONS.map((p) => p.dir)).size).toBe(PYLONS.length);
+  });
+
+  it("Rodeo's models carry their credits and their real height", () => {
+    const rodeo = PYLONS.filter((p) => p.id.startsWith("rodeo-"));
+    expect(rodeo.map((p) => [p.id, p.heightM])).toEqual([
+      ["rodeo-reno", 15.18],
+      ["rodeo-18", 18],
+      ["rodeo-25", 25],
+    ]);
+    for (const p of rodeo) {
+      const credits = readFileSync(new URL(`../assets/pylons/${p.dir}/__CREDITS.txt`, import.meta.url), "utf8");
+      expect(credits).toContain("Rodeo");
+      expect(credits).toContain("#257");
+      // Text .tmb: the geometry's internal name matches the file, and its texture is in the folder.
+      const tmb = readFileSync(new URL(`../assets/pylons/${p.dir}/${p.tmb}.tmb`, import.meta.url), "latin1");
+      expect(tmb).toContain(`<[string8u][name][${p.tmb}]>`);
+      const texture = /<\[string8\]\[name\]\[([^\]]+)\]>/.exec(tmb)?.[1];
+      expect(readdirSync(new URL(`../assets/pylons/${p.dir}/`, import.meta.url))).toContain(`${texture}.ttx`);
+    }
+  });
+
+  it("a gate can place one of Rodeo's models", () => {
+    const course = makeCourse([
+      { type: "start", x: 0, y: -500, heading: 0, pylon: "rodeo-reno" },
+      { type: "turn", x: 0, y: 0, heading: 0, turnSide: "left", pylon: "rodeo-18" },
+      { type: "finish", x: 0, y: 500, heading: 0, pylon: "rodeo-25" },
+    ]);
+    const plan = planPoi(course);
+    expect(plan.modelDirs).toEqual(["rodeo_air_race_18_4", "rodeo_air_race_25_5", "rodeo_reno_3"]);
+    expect(plan.tsl).toContain("<[string8][geometry][rodeo_air_race_18_4/pylon_air_race_18_4]>");
+    expect(plan.pylonCount).toBe(5);
   });
 });

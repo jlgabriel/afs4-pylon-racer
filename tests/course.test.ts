@@ -70,6 +70,25 @@ describe("revision", () => {
     expect(courseRevision(straightCourse({ rules: { pylonHitRadiusM: 8 } }))).not.toBe(V02_STRAIGHT_REVISION);
     expect(courseRevision(straightCourse({ rules: { pylonHeightM: 40 } }))).not.toBe(V02_STRAIGHT_REVISION);
   });
+
+  it("counts a gate's pylon model only through its height, when it differs from the course's", () => {
+    const withPylon = (pylon: string, rules: Record<string, unknown> = {}) =>
+      makeCourse(
+        [
+          { type: "start", x: 0, y: -500, heading: 0 },
+          { type: "gate", x: 0, y: 0, heading: 0, pylon },
+          { type: "finish", x: 0, y: 500, heading: 0 },
+        ],
+        { rules },
+      );
+    // krzysk1's models (unknown height) and a model as tall as the course's pylons: no change.
+    expect(courseRevision(withPylon("blue"))).toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(withPylon("rodeo-25"))).toBe(V02_STRAIGHT_REVISION);
+    // A shorter model changes how the course is scored.
+    expect(courseRevision(withPylon("rodeo-18"))).not.toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(withPylon("rodeo-18"))).toBe(courseRevision(withPylon("rodeo-18")));
+    expect(courseRevision(withPylon("rodeo-25", { pylonHeightM: 18 }))).not.toBe(courseRevision(withPylon("blue", { pylonHeightM: 18 })));
+  });
 });
 
 describe("import from the old pylon-race tool", () => {

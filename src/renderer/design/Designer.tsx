@@ -307,7 +307,7 @@ const RULE_FIELDS: { key: NumericRule; label: string; unit: string; min?: number
   { key: "tooHighPenaltyS", label: "Too high", unit: "s" },
   { key: "pylonHitPenaltyS", label: "Pylon hit", unit: "s" },
   { key: "pylonHitRadiusM", label: "Hit within", unit: "m of a pylon", min: 0.5 },
-  { key: "pylonHeightM", label: "Pylon height", unit: "m", min: 1 },
+  { key: "pylonHeightM", label: "Pylon height", unit: "m, unless the model has its own", min: 1 },
   { key: "turnCutPenaltyS", label: "Turn pylon cut", unit: "s" },
 ];
 

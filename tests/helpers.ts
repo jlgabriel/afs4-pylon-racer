@@ -17,6 +17,8 @@ export interface GateSpec {
   top?: number;
   /** Terrain elevation at the gate, m MSL. */
   ground?: number;
+  /** Pylon model id. */
+  pylon?: string;
 }
 
 export function makeCourse(gates: GateSpec[], extra: Record<string, unknown> = {}): Course {
@@ -36,6 +38,7 @@ export function makeCourse(gates: GateSpec[], extra: Record<string, unknown> = {
       turnSide: g.turnSide ?? null,
       topM: g.top ?? null,
       groundElevM: g.ground ?? null,
+      pylon: g.pylon ?? null,
     })),
     ...extra,
   });

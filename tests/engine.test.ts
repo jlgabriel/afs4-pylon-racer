@@ -356,6 +356,17 @@ describe("pylon hits", () => {
     expect(penaltyKinds(eng)).toEqual(["pylon-hit"]);
   });
 
+  it("uses the model's own height when it has one", () => {
+    // 20 m up, 3 m from the pylon: over Rodeo's 18 m model, under the course-wide 25 m.
+    const short = new RaceEngine(judged({ type: "gate", ground: 1400, pylon: "rodeo-18" }));
+    flyAxis(short, { altMslM: 1420 }, 37);
+    expect(penaltyKinds(short)).toEqual([]);
+
+    const tall = new RaceEngine(judged({ type: "gate", ground: 1400, pylon: "rodeo-25" }, { pylonHeightM: 10 }));
+    flyAxis(tall, { altMslM: 1420 }, 37);
+    expect(penaltyKinds(tall)).toEqual(["pylon-hit"]);
+  });
+
   it("a turn pylon can be hit too", () => {
     const eng = new RaceEngine(judged({ type: "turn", width: 300, turnSide: "left" }));
     flyAxis(eng, {}, 2); // 2 m right of the pylon: rounded on the correct side, but hit

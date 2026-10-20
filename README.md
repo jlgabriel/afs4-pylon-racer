@@ -75,5 +75,5 @@ npm run build:win      # or build:mac / build:linux
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
 
-Pylon Racer ships no Aerofly FS 4 content. The pylon models are krzysk1's Reno air-race pylons (MIT);
-see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Pylon Racer ships no Aerofly FS 4 content. The pylon models are krzysk1's Reno air-race pylons (MIT)
+and Rodeo's air-race pylons (used with permission); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

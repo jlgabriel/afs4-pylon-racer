@@ -34,6 +34,18 @@ describe("installing a course", () => {
     expect(installer.list().map((p) => p.courseId)).toEqual(["munich-sprint"]);
   });
 
+  it("copies Rodeo's models, with their credits, for a course that uses them", () => {
+    const course = { ...sprint, gates: sprint.gates.map((g, i) => ({ ...g, pylon: i === 0 ? "rodeo-reno" : "rodeo-18" })) };
+    const dir = path.join(poi, installer.install(course).folderName);
+    expect(readdirSync(dir).sort()).toEqual(
+      ["PYLON_MODEL_LICENSE.txt", "pr_munich_sprint.tsl", MARKER_FILE, "rodeo_air_race_18_4", "rodeo_reno_3"].sort(),
+    );
+    expect(readdirSync(path.join(dir, "rodeo_air_race_18_4")).sort()).toEqual(
+      ["__CREDITS.txt", "pylon_air_race.ttx", "pylon_air_race_18_4.tmb"].sort(),
+    );
+    expect(readdirSync(path.join(dir, "rodeo_reno_3")).sort()).toEqual(["__CREDITS.txt", "pylon_reno.ttx", "pylon_reno_3.tmb"].sort());
+  });
+
   it("leaves no staging folder behind", () => {
     installer.install(sprint);
     expect(readdirSync(poi).filter((n) => n.startsWith("."))).toEqual([]);

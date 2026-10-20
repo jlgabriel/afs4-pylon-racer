@@ -7,6 +7,7 @@
 // - laps > 1: there is NO finish gate — the start line closes each lap and the race ends on the
 //   start-line crossing that completes the last lap.
 import { z } from "zod";
+import { pylonHeightFor } from "../export/pylons";
 
 export const COURSE_FORMAT = "pylon-racer/course";
 export const COURSE_VERSION = 1;
@@ -51,7 +52,8 @@ export const rulesSchema = z.object({
   knifeToleranceDeg: z.number().min(0).max(90).default(15),
   /** Passing closer than this to a pylon's center counts as hitting it (aircraft as a point). */
   pylonHitRadiusM: z.number().positive().default(5),
-  /** Pylons are this tall: passing above it is not a hit. To be measured in the sim (DESIGN §11). */
+  /** Pylons are this tall: passing above it is not a hit. Only for models whose height is unknown
+   *  (krzysk1's); a model with a known height uses its own (export/pylons.ts). */
   pylonHeightM: z.number().positive().default(25),
 });
 export type Rules = z.infer<typeof rulesSchema>;
@@ -134,16 +136,23 @@ export function revisionInput(c: Course): string {
   for (const key of ["pylonHitRadiusM", "pylonHeightM"] as const) {
     if (r[key] !== later[key]) rules.push(`${key}=${r[key]}`);
   }
-  const gates = c.gates.map((g) => [
-    g.type,
-    g.center.lon.toFixed(7),
-    g.center.lat.toFixed(7),
-    g.widthM.toFixed(2),
-    g.headingDeg.toFixed(2),
-    g.topM === null ? null : g.topM.toFixed(2),
-    g.groundElevM === null ? null : g.groundElevM.toFixed(2),
-    g.turnSide,
-  ]);
+  const gates = c.gates.map((g) => {
+    const gate = [
+      g.type,
+      g.center.lon.toFixed(7),
+      g.center.lat.toFixed(7),
+      g.widthM.toFixed(2),
+      g.headingDeg.toFixed(2),
+      g.topM === null ? null : g.topM.toFixed(2),
+      g.groundElevM === null ? null : g.groundElevM.toFixed(2),
+      g.turnSide,
+    ];
+    // The pylon model is cosmetic, except for its height: it joins only when it differs from the
+    // course-wide one (so courses with krzysk1's models, of unknown height, keep their revision).
+    const pylonHeightM = pylonHeightFor(g, r);
+    if (pylonHeightM !== r.pylonHeightM) gate.push(`pylonHeightM=${pylonHeightM.toFixed(2)}`);
+    return gate;
+  });
   return JSON.stringify({ laps: c.laps, rules, gates });
 }
 

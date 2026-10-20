@@ -2,8 +2,8 @@
 
 ## Air-race pylon models — krzysk1 (MIT)
 
-The pylon models in `assets/pylons/` (`.tmb` geometry and `.ttx` textures) are the air-race pylons from
-**krzysk1's Reno Air Race** package for Aerofly FS, used unmodified. Pylon Racer copies the ones a
+The pylon models in `assets/pylons/pylon_*/` (`.tmb` geometry and `.ttx` textures) are the air-race
+pylons from **krzysk1's Reno Air Race** package for Aerofly FS, used unmodified. Pylon Racer copies the ones a
 course uses into the scenery it installs, together with this license.
 
 ```
@@ -29,6 +29,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Air-race pylon models — Rodeo (used with permission)
+
+The pylon models in `assets/pylons/rodeo_*/` (`pylon_reno_3`, `pylon_air_race_18_4`,
+`pylon_air_race_25_5`, with their `.ttx` textures) are by **Rodeo** (Aerofly FS 4 community), made with
+AC3D and packaged in the `xref_air_race_pylons` XREF library by **@Apfelflieger**. They are used
+unmodified, with the author's permission: asked on the Aerofly FS 4 forum (post #257) whether Pylon
+Racer could ship them, Rodeo answered "You can use whatever you need." They are not covered by
+Pylon Racer's license; each folder carries a `__CREDITS.txt` that is copied with the model into the
+scenery the app installs.
 
 ## Map data
 

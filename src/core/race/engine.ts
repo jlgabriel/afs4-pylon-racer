@@ -12,7 +12,8 @@
 // How a gate was passed is judged at the pass instant (interpolated):
 // - level / knife gates: the bank against the course's tolerance
 // - any gate with a top: the height above the terrain (the sim's AGL, else MSL minus the gate's DEM)
-// - pylons: flying closer than pylonHitRadiusM to a pylon's center, below its height, is a hit
+// - pylons: flying closer than pylonHitRadiusM to a pylon's center, below its height (the model's
+//   own when known, else pylonHeightM), is a hit
 //   (once per pylon and lap); checked on every segment, not only at passes
 // - turn pylons: crossing the half-line on the WRONG side of the pylon still counts the step, with
 //   the turn-cut penalty instead of a missed gate
@@ -29,6 +30,7 @@ import {
   type LonLat,
   type Xy,
 } from "../geo/geo";
+import { pylonHeightFor } from "../export/pylons";
 import type { Fix } from "./fix";
 
 export type RaceStatus = "waiting" | "running" | "finished" | "dnf";
@@ -386,8 +388,9 @@ export class RaceEngine {
   /** A close pass of a pylon while racing: a hit unless above the pylon. Once per pylon and lap. */
   private judgeNearPylon(gateIndex: number, pylon: number, distanceM: number, at: Fix): RaceEvent[] {
     if (this.status !== "running") return [];
-    const height = heightAboveGround(at, this.course.gates[gateIndex]!);
-    if (height !== null && height >= this.course.rules.pylonHeightM) return [];
+    const gate = this.course.gates[gateIndex]!;
+    const height = heightAboveGround(at, gate);
+    if (height !== null && height >= pylonHeightFor(gate, this.course.rules)) return [];
     const lap = Math.min(this.course.laps, this.lapTimes.length + 1);
     const key = `${gateIndex}:${pylon}:${lap}`;
     if (this.pylonsHit.has(key)) return [];
