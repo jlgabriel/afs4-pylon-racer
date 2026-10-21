@@ -1,6 +1,6 @@
 {
   "name": "afs4-pylon-racer",
-  "version": "0.3.1",
+  "version": "0.4.0-pre",
   "private": true,
   "type": "module",
   "description": "Pylon Racer — design pylon race courses for Aerofly FS 4, fly them, and race the clock and other pilots' ghosts.",
