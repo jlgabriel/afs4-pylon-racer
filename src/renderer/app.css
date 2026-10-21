@@ -4,6 +4,11 @@
   flex-direction: column;
   height: 100%;
 }
+/* A file dragged over the window: it imports on drop. */
+.app.dropping {
+  outline: 2px dashed var(--accent);
+  outline-offset: calc(-1 * var(--space-2));
+}
 
 .topbar {
   display: flex;
@@ -49,6 +54,10 @@
   background: var(--surface-2);
   border-bottom: 1px solid var(--bad);
   font-size: var(--size-sm);
+}
+/* An import reports one line per file. */
+.message > span:first-child {
+  white-space: pre-line;
 }
 
 .body {
@@ -317,6 +326,13 @@
 .runs td {
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--line);
+}
+.runs td:last-child {
+  text-align: right;
+}
+.runs button.small {
+  padding: 0 var(--space-2);
+  font-size: var(--size-xs);
 }
 
 /* --- messages --------------------------------------------------------------------------------- */

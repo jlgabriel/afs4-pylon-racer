@@ -1,6 +1,7 @@
 // Everything the app keeps on disk, under userData:
 //   courses/<id>.json   one native course per file
 //   runs/<id>.json      one run per file (with its track)
+//   runs/imported/      runs that came from .pylonrun files, same format
 //   settings.json       pilot, AFS4 folder override, last course, removed samples
 // Files are validated on the way in; a file that fails is logged and skipped, never fatal. Run
 // summaries are cached in memory after the first read (the tracks make run files large).
@@ -33,12 +34,14 @@ export const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 export class Storage {
   private readonly coursesDir: string;
   private readonly runsDir: string;
+  private readonly importedDir: string;
   private readonly settingsFile: string;
   private runCache: Map<string, RunSummary> | null = null;
 
   constructor(userData: string) {
     this.coursesDir = path.join(userData, "courses");
     this.runsDir = path.join(userData, "runs");
+    this.importedDir = path.join(this.runsDir, "imported");
     this.settingsFile = path.join(userData, "settings.json");
   }
 
@@ -46,7 +49,7 @@ export class Storage {
    *  so a sample added in a new version reaches existing installs too. */
   init(): void {
     mkdirSync(this.coursesDir, { recursive: true });
-    mkdirSync(this.runsDir, { recursive: true });
+    mkdirSync(this.importedDir, { recursive: true });
     const removed = new Set(this.readSettings().removedSamples);
     for (const c of sampleCourses()) {
       if (!removed.has(c.id) && !existsSync(this.courseFile(c.id))) this.writeCourse(c);
@@ -125,6 +128,13 @@ export class Storage {
     return stored;
   }
 
+  /** A stored course on this revision: the course's own id first, then any other. */
+  findCourseByRevision(revision: string, preferId?: string): Course | null {
+    const own = preferId && SAFE_ID.test(preferId) ? this.getCourse(preferId) : null;
+    if (own && courseRevision(own) === revision) return own;
+    return this.listCourses().find((c) => courseRevision(c) === revision) ?? null;
+  }
+
   /** Write a course from the designer (create or overwrite by id). */
   saveCourse(course: Course): void {
     if (!SAFE_ID.test(course.id)) throw new Error(`Unsafe course id ${course.id}`);
@@ -149,13 +159,15 @@ export class Storage {
   listRuns(): RunSummary[] {
     if (!this.runCache) {
       this.runCache = new Map();
-      for (const name of safeReaddir(this.runsDir)) {
-        if (!name.endsWith(".json")) continue;
-        try {
-          const run = parseRun(JSON.parse(readFileSync(path.join(this.runsDir, name), "utf8")));
-          this.runCache.set(run.id, summarizeRun(run));
-        } catch (e) {
-          log.warn(`skipping unreadable run ${name}`, e);
+      for (const [dir, imported] of [[this.runsDir, false], [this.importedDir, true]] as const) {
+        for (const name of safeReaddir(dir)) {
+          if (!name.endsWith(".json")) continue;
+          try {
+            const run = parseRun(JSON.parse(readFileSync(path.join(dir, name), "utf8")));
+            if (!this.runCache.has(run.id)) this.runCache.set(run.id, summarizeRun(run, imported));
+          } catch (e) {
+            log.warn(`skipping unreadable run ${name}`, e);
+          }
         }
       }
     }
@@ -164,15 +176,27 @@ export class Storage {
 
   getRun(id: string): Run | null {
     if (!SAFE_ID.test(id)) return null;
-    const file = path.join(this.runsDir, `${id}.json`);
-    if (!existsSync(file)) return null;
-    return parseRun(JSON.parse(readFileSync(file, "utf8")));
+    for (const dir of [this.runsDir, this.importedDir]) {
+      const file = path.join(dir, `${id}.json`);
+      if (existsSync(file)) return parseRun(JSON.parse(readFileSync(file, "utf8")));
+    }
+    return null;
   }
 
   saveRun(run: Run): RunSummary {
+    return this.writeRun(run, false);
+  }
+
+  /** Store a run from a .pylonrun. Null when that run is already here (flown here or imported). */
+  addImportedRun(run: Run): RunSummary | null {
+    if (this.listRuns().some((r) => r.id === run.id)) return null;
+    return this.writeRun(run, true);
+  }
+
+  private writeRun(run: Run, imported: boolean): RunSummary {
     if (!SAFE_ID.test(run.id)) throw new Error(`Unsafe run id ${run.id}`);
-    writeFileAtomic(path.join(this.runsDir, `${run.id}.json`), JSON.stringify(run) + "\n");
-    const summary = summarizeRun(run);
+    writeFileAtomic(path.join(imported ? this.importedDir : this.runsDir, `${run.id}.json`), JSON.stringify(run) + "\n");
+    const summary = summarizeRun(run, imported);
     this.listRuns(); // make sure the cache exists before adding to it
     this.runCache!.set(run.id, summary);
     return summary;

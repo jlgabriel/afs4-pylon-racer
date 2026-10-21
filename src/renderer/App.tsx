@@ -13,13 +13,14 @@ export function App() {
   const chooseAfs4Dir = useStore((s) => s.chooseAfs4Dir);
   const view = useStore((s) => s.view);
   const pinned = useStore((s) => s.app?.prefs.onTop ?? false);
+  const dropping = useFileDrop();
 
   useEffect(() => {
     void init();
   }, [init]);
 
   return (
-    <div className={`app ${pinned ? "pinned" : ""}`}>
+    <div className={`app ${pinned ? "pinned" : ""} ${dropping ? "dropping" : ""}`}>
       <TopBar />
       {message && (
         <div className={`message message-${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>
@@ -42,6 +43,51 @@ export function App() {
       )}
     </div>
   );
+}
+
+/** Files dragged onto the window import as if picked with Import…; true while a drag is over it. */
+function useFileDrop(): boolean {
+  const importDropped = useStore((s) => s.importDropped);
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    // Every drag event must be cancelled, or the browser opens the dropped file in the window.
+    let depth = 0;
+    const hasFiles = (e: DragEvent): boolean => e.dataTransfer?.types.includes("Files") ?? false;
+    const enter = (e: DragEvent): void => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth++;
+      setOver(true);
+    };
+    const leave = (e: DragEvent): void => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setOver(false);
+    };
+    const overHandler = (e: DragEvent): void => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    };
+    const drop = (e: DragEvent): void => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setOver(false);
+      void importDropped([...(e.dataTransfer?.files ?? [])]);
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("dragover", overHandler);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("dragover", overHandler);
+      window.removeEventListener("drop", drop);
+    };
+  }, [importDropped]);
+  return over;
 }
 
 function TopBar() {
@@ -126,7 +172,7 @@ function CourseList() {
   const courses = useStore((s) => s.courses);
   const selected = useStore((s) => s.selected);
   const select = useStore((s) => s.select);
-  const importCourse = useStore((s) => s.importCourse);
+  const importFiles = useStore((s) => s.importFiles);
   const newCourse = useStore((s) => s.newCourse);
 
   return (
@@ -135,7 +181,10 @@ function CourseList() {
         <span className="label">Courses</span>
         <span className="courses-tools">
           <button onClick={newCourse}>New</button>
-          <button onClick={() => void importCourse()} title="Import a course file, including the old pylon-race course.json">
+          <button
+            onClick={() => void importFiles()}
+            title="Import courses (.pylonrace) and runs (.pylonrun) from other pilots, or the old pylon-race course.json. You can also drop the files on the window."
+          >
             Import…
           </button>
         </span>

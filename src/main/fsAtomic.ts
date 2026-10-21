@@ -5,10 +5,11 @@ import path from "node:path";
 
 const TMP_SUFFIX = ".racer-tmp";
 
-export function writeFileAtomic(file: string, data: string): void {
+export function writeFileAtomic(file: string, data: string | Uint8Array): void {
   mkdirSync(path.dirname(file), { recursive: true });
   const tmp = file + TMP_SUFFIX;
-  writeFileSync(tmp, data, "utf8");
+  if (typeof data === "string") writeFileSync(tmp, data, "utf8");
+  else writeFileSync(tmp, data);
   try {
     renameSync(tmp, file);
   } catch (e) {

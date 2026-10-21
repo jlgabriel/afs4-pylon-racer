@@ -125,12 +125,13 @@ export function RaceView() {
   );
 }
 
-/** Edit, copy, delete, and the course's pylons in AFS4. */
+/** Edit, copy, share, delete, and the course's pylons in AFS4. */
 function CourseTools() {
   const summary = useStore((s) => s.courses.find((c) => c.id === s.selected?.id));
   const busy = useStore((s) => s.busy);
   const edit = useStore((s) => s.editCourse);
   const duplicate = useStore((s) => s.duplicateCourse);
+  const share = useStore((s) => s.exportCourse);
   const remove = useStore((s) => s.deleteCourse);
   const install = useStore((s) => s.installCourse);
   const uninstall = useStore((s) => s.uninstallCourse);
@@ -139,6 +140,9 @@ function CourseTools() {
     <div className="course-tools">
       <button onClick={edit}>Edit</button>
       <button onClick={() => void duplicate()}>Duplicate</button>
+      <button onClick={() => void share()} title="Save this course as a .pylonrace file to send to other pilots">
+        Share…
+      </button>
       <button onClick={() => void remove()}>Delete</button>
       <span className="course-tools-sep" />
       <span className={`install-state ${state}`}>
@@ -295,20 +299,24 @@ function Value({ label, value, unit }: { label: string; value: number | null; un
 }
 
 function Runs({ runs }: { runs: RunSummary[] }) {
+  const share = useStore((s) => s.exportRun);
   if (runs.length === 0) return <section className="panel runs muted">No runs on this course yet.</section>;
+  const others = runs.some((r) => r.imported);
   return (
     <section className="panel runs">
-      <div className="label">Your runs on this course</div>
+      <div className="label">{others ? "Runs on this course" : "Your runs on this course"}</div>
       <table className="num">
         <thead>
           <tr>
             <th>#</th>
             <th>Total</th>
             <th>Penalties</th>
+            <th>Pilot</th>
             <th>Aircraft</th>
             <th>Class</th>
             <th>Source</th>
             <th>Date</th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -320,12 +328,21 @@ function Runs({ runs }: { runs: RunSummary[] }) {
                 {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}
               </td>
               <td>{r.penaltyTotal > 0 ? `+${r.penaltyTotal.toFixed(1)}` : "—"}</td>
+              <td title={r.imported ? "Imported from a .pylonrun file" : "Flown here"}>
+                {r.pilot}
+                {r.imported && <span className="muted"> · imported</span>}
+              </td>
               <td>{r.aircraftId ?? "—"}</td>
               <td>{classLabel(r.classId)}</td>
               <td>
                 {r.source} {r.sourceHz ? `${Math.round(r.sourceHz)} Hz` : ""}
               </td>
               <td>{new Date(r.startedAt).toLocaleString()}</td>
+              <td>
+                <button className="small" onClick={() => void share(r.id)} title="Save this run as a .pylonrun file to send to other pilots">
+                  Share…
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

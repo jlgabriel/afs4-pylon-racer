@@ -1,16 +1,20 @@
 // One ipcMain handler per RacerApi method, channel "racer:<method>". This is the app's single trust
 // boundary: it owns every path and dialog, validates what comes in, and maps expected failures into
 // RacerResult envelopes (a thrown error loses its fields crossing invoke).
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type WebContents } from "electron";
-import { existsSync, readFileSync } from "node:fs";
+import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type SaveDialogOptions, type WebContents } from "electron";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { ZodError } from "zod";
 import { parseCourse, type Course } from "../core/course/course";
-import { importRctCourse, isRctCourse } from "../core/course/importRct";
+import { COURSE_EXT, courseFileName, IMPORT_EXTS, RUN_EXT, runFileName } from "../core/files/share";
+import type { Run } from "../core/run/run";
 import { rankRuns, summarizeCourse } from "../core/run/summaries";
-import type { AppInfo, CourseSummary, Prefs, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
+import type { AppInfo, CourseSummary, DroppedFile, ImportReport, Prefs, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
+import { writeFileAtomic } from "./fsAtomic";
 import { Afs4NotFoundError, type Installer } from "./installer";
 import { log } from "./log";
 import type { RaceController } from "./race";
+import { courseFile, importFiles, MAX_IMPORT_BYTES, runFile } from "./sharing";
 import { SAFE_ID, type Storage } from "./storage";
 import { elevations, searchPlaces } from "./web";
 
@@ -31,7 +35,13 @@ export interface IpcDeps {
   userData: string;
 }
 
-export function registerIpc({ storage, race, installer, afs4Dir, userData }: IpcDeps): void {
+export interface IpcHandle {
+  /** Files the OS asked us to open (a double-clicked .pylonrace or .pylonrun): imported and pushed
+   *  to the renderer, or held until the renderer takes them at startup. */
+  openFiles(paths: readonly string[]): void;
+}
+
+export function registerIpc({ storage, race, installer, afs4Dir, userData }: IpcDeps): IpcHandle {
   const appInfo = (): AppInfo => {
     const s = storage.readSettings();
     return {
@@ -53,6 +63,62 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
     } catch (e) {
       return fail("invalid-course", errorText(e));
     }
+  };
+
+  const withCourseAsync = async <T>(id: unknown, fn: (c: Course) => Promise<RacerResult<T>>): Promise<RacerResult<T>> => {
+    const found = withCourse(id, (c) => ok(c));
+    if (!found.ok) return found;
+    try {
+      return await fn(found.value);
+    } catch (e) {
+      return fail("io", errorText(e));
+    }
+  };
+  const readRun = (id: string): Run | null => {
+    try {
+      return storage.getRun(id);
+    } catch (e) {
+      log.warn(`unreadable run ${id}`, e);
+      return null;
+    }
+  };
+  const saveDialog = async (sender: WebContents, title: string, fileName: string, ext: string, kind: string) => {
+    const opts: SaveDialogOptions = {
+      title,
+      defaultPath: path.join(app.getPath("documents"), fileName),
+      filters: [{ name: kind, extensions: [ext] }],
+    };
+    const parent = dialogParent(sender);
+    const pick = parent ? await dialog.showSaveDialog(parent, opts) : await dialog.showSaveDialog(opts);
+    return pick.canceled || !pick.filePath ? null : pick.filePath;
+  };
+  const importPaths = (paths: readonly string[]): ImportReport => {
+    const files: { name: string; data: Uint8Array }[] = [];
+    const unreadable: string[] = [];
+    for (const p of paths) {
+      try {
+        if (statSync(p).size > MAX_IMPORT_BYTES) throw new Error("too big");
+        files.push({ name: path.basename(p), data: new Uint8Array(readFileSync(p)) });
+      } catch (e) {
+        log.warn(`import: couldn't read ${p}`, e);
+        unreadable.push(`${path.basename(p)}: couldn't read the file.`);
+      }
+    }
+    const r = importFiles(storage, files);
+    return { ...r, lines: [...r.lines, ...unreadable], failed: r.failed + unreadable.length };
+  };
+
+  // Opened before the renderer listens (the launch itself, macOS open-file before ready) wait here.
+  const opened: string[] = [];
+  let rendererListens = false;
+  const openFiles = (paths: readonly string[]): void => {
+    if (paths.length === 0) return;
+    if (!rendererListens) {
+      opened.push(...paths);
+      return;
+    }
+    const report = importPaths(paths);
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send("racer:imported", report);
   };
 
   // --- app ------------------------------------------------------------------------------------------
@@ -101,27 +167,43 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
 
   ipcMain.handle("racer:getCourse", (_e, id: unknown) => withCourse(id, (c) => ok(c)));
 
-  ipcMain.handle("racer:importCourse", async (e) => {
+  ipcMain.handle("racer:importFiles", async (e): Promise<RacerResult<ImportReport>> => {
     const opts: OpenDialogOptions = {
-      title: "Import a course",
-      filters: [{ name: "Course", extensions: ["json"] }],
-      properties: ["openFile"],
+      title: "Import courses and runs",
+      filters: [
+        { name: "Pylon Racer files", extensions: [...IMPORT_EXTS] },
+        { name: "All files", extensions: ["*"] },
+      ],
+      properties: ["openFile", "multiSelections"],
     };
     const parent = dialogParent(e.sender);
     const pick = parent ? await dialog.showOpenDialog(parent, opts) : await dialog.showOpenDialog(opts);
-    const file = pick.filePaths[0];
-    if (pick.canceled || !file) return fail("cancelled", "Import cancelled");
-    try {
-      const data: unknown = JSON.parse(readFileSync(file, "utf8"));
-      const course = isRctCourse(data) ? importRctCourse(data, new Date().toISOString()) : parseCourse(data);
-      const stored = storage.addCourse(course);
-      log.info(`course imported: ${stored.name} (${stored.id}) from ${file}`);
-      return ok(summary(stored));
-    } catch (err) {
-      log.warn(`course import failed: ${file}`, err);
-      return fail("invalid-course", errorText(err));
-    }
+    if (pick.canceled || pick.filePaths.length === 0) return fail("cancelled", "Import cancelled");
+    return ok(importPaths(pick.filePaths));
   });
+
+  ipcMain.handle("racer:takeOpenedFiles", () => {
+    rendererListens = true;
+    return opened.length > 0 ? importPaths(opened.splice(0)) : null;
+  });
+
+  ipcMain.handle("racer:importDropped", (_e, files: unknown): RacerResult<ImportReport> => {
+    if (!Array.isArray(files)) return fail("invalid-course", "Nothing to import");
+    const valid = files.filter(
+      (f): f is DroppedFile => typeof f === "object" && f !== null && typeof f.name === "string" && f.data instanceof Uint8Array,
+    );
+    return ok(importFiles(storage, valid.map((f) => ({ name: path.basename(f.name), data: f.data }))));
+  });
+
+  ipcMain.handle("racer:exportCourse", (e, id: unknown) =>
+    withCourseAsync(id, async (c) => {
+      const file = await saveDialog(e.sender, "Share course", courseFileName(c), COURSE_EXT, "Pylon Racer course");
+      if (!file) return fail("cancelled", "Export cancelled");
+      writeFileAtomic(file, courseFile(c));
+      log.info(`course exported: ${c.id} to ${file}`);
+      return ok(path.basename(file));
+    }),
+  );
 
   ipcMain.handle("racer:saveCourse", async (_e, draft: unknown): Promise<RacerResult<SaveResult>> => {
     const now = new Date().toISOString();
@@ -235,6 +317,21 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
 
   ipcMain.handle("racer:listRuns", (_e, courseId: unknown) => rankRuns(storage.listRuns().filter((r) => r.courseId === courseId)));
 
+  ipcMain.handle("racer:exportRun", async (e, id: unknown) => {
+    const run = typeof id === "string" ? readRun(id) : null;
+    if (!run) return fail("not-found", "No such run");
+    const file = await saveDialog(e.sender, "Share run", runFileName(run), RUN_EXT, "Pylon Racer run");
+    if (!file) return fail("cancelled", "Export cancelled");
+    try {
+      const { data, withCourse } = runFile(storage, run);
+      writeFileAtomic(file, data);
+      log.info(`run exported: ${run.id} to ${file}${withCourse ? " with its course" : ""}`);
+      return ok({ fileName: path.basename(file), withCourse });
+    } catch (err) {
+      return fail("io", errorText(err));
+    }
+  });
+
   ipcMain.handle("racer:getRun", (_e, id: unknown) => {
     if (typeof id !== "string") return fail("not-found", "No run id");
     try {
@@ -244,6 +341,8 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
       return fail("io", errorText(e));
     }
   });
+
+  return { openFiles };
 }
 
 function errorText(e: unknown): string {

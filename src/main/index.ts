@@ -1,9 +1,10 @@
 // Electron main — window lifecycle, IPC registration and the hardening: sandboxed renderer, no
 // navigation, no permissions, and a CSP on the packaged renderer. All I/O lives behind main/ipc.ts.
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { app, BrowserWindow, session, shell } from "electron";
 import { Installer, defaultAfs4UserDir } from "./installer";
-import { applyOnTop, registerIpc } from "./ipc";
+import { applyOnTop, registerIpc, type IpcHandle } from "./ipc";
 import { LOG_FILE_NAME, log } from "./log";
 import { mayNavigate } from "./navigation";
 import { RaceController } from "./race";
@@ -32,6 +33,21 @@ process.on("unhandledRejection", fatal("unhandled promise rejection in main"));
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
   "img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
+// One instance: a second launch (double-clicking a .pylonrace while the app runs) hands its files to
+// the first and quits. Two instances would also fight over the telemetry ports.
+const firstInstance = app.requestSingleInstanceLock();
+if (!firstInstance) app.quit();
+
+const OPENABLE = /\.(pylonrace|pylonrun)$/i;
+/** Exchange files on a command line (Windows and Linux pass the double-clicked file as an argument). */
+const filesIn = (argv: readonly string[]): string[] => argv.slice(1).filter((a) => OPENABLE.test(a) && existsSync(a));
+let ipc: IpcHandle | null = null;
+const toOpen: string[] = filesIn(process.argv);
+const openFiles = (paths: readonly string[]): void => {
+  if (ipc) ipc.openFiles(paths);
+  else toOpen.push(...paths);
+};
 
 const storage = new Storage(app.getPath("userData"));
 const hub = new TelemetryHub();
@@ -96,7 +112,23 @@ function createWindow(): void {
   else void win.loadFile(join(import.meta.dirname, "../renderer/index.html"));
 }
 
+// macOS opens documents through this event, possibly before ready.
+app.on("open-file", (event, file) => {
+  event.preventDefault();
+  if (OPENABLE.test(file)) openFiles([file]);
+});
+
+app.on("second-instance", (_event, argv) => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  }
+  openFiles(filesIn(argv));
+});
+
 app.whenReady().then(() => {
+  if (!firstInstance) return;
   log.info(
     `Pylon Racer ${__APP_VERSION__} · Electron ${process.versions.electron} · ${process.platform} ${process.arch} · ` +
       `${app.isPackaged ? "packaged" : "dev"} · userData ${app.getPath("userData")}`,
@@ -110,7 +142,8 @@ app.whenReady().then(() => {
   }
 
   storage.init();
-  registerIpc({ storage, race, installer, afs4Dir, userData: app.getPath("userData") });
+  ipc = registerIpc({ storage, race, installer, afs4Dir, userData: app.getPath("userData") });
+  ipc.openFiles(toOpen.splice(0));
   hub.start();
   createWindow();
   app.on("activate", () => {

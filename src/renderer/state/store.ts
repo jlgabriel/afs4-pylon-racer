@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { courseRevision, type Course } from "../../core/course/course";
 import { draftOf, draftProblem, newDraft, type Draft } from "../../core/course/edit";
 import type { Run } from "../../core/run/run";
-import type { AppInfo, CourseSummary, LiveUpdate, Prefs, RunSummary } from "../../shared/racerApi";
+import type { AppInfo, CourseSummary, ImportReport, LiveUpdate, Prefs, RunSummary } from "../../shared/racerApi";
 import { getRacer } from "../app/racer";
 import { appendTrail, type TrailPoint } from "../race/trail";
 
@@ -24,7 +24,7 @@ interface State {
   courses: CourseSummary[];
   selected: Course | null;
   runs: RunSummary[];
-  /** Best finished run of the selected course revision. */
+  /** Your best finished run of the selected course revision (imported runs aside). */
   bestRun: Run | null;
   /** The best run as it was when the current attempt was armed: what this attempt races against.
    *  It stays put when the attempt itself becomes the new best, so it is never compared to itself. */
@@ -45,7 +45,11 @@ interface State {
 
   init(): Promise<void>;
   select(id: string): Promise<void>;
-  importCourse(): Promise<void>;
+  importFiles(): Promise<void>;
+  /** Files dropped on the window. */
+  importDropped(files: readonly File[]): Promise<void>;
+  exportCourse(): Promise<void>;
+  exportRun(id: string): Promise<void>;
   resetRace(): Promise<void>;
   startDemo(): Promise<void>;
   stopDemo(): Promise<void>;
@@ -79,7 +83,7 @@ export const useStore = create<State>((set, get) => {
     }
     const revision = courseRevision(course);
     const runs = (await racer.listRuns(course.id)).filter((r) => r.courseRevision === revision);
-    const best = runs.find((r) => r.status === "finished");
+    const best = runs.find((r) => r.status === "finished" && !r.imported);
     const bestRun = best ? await racer.getRun(best.id) : null;
     const value = bestRun?.ok ? bestRun.value : null;
     set(arm ? { courses, runs, bestRun: value, targetRun: value } : { courses, runs, bestRun: value });
@@ -87,6 +91,15 @@ export const useStore = create<State>((set, get) => {
 
   /** Unsaved designer changes are only dropped with the user's consent. */
   const mayLeaveDraft = (): boolean => !get().draftDirty || window.confirm("Discard your unsaved changes to this course?");
+
+  /** Say what an import did and open the course it brought (or refresh the lists). */
+  const afterImport = async (r: ImportReport): Promise<void> => {
+    const allFailed = r.failed > 0 && r.failed === r.lines.length;
+    const message: Message = { kind: allFailed ? "error" : "info", text: r.lines.join("\n") };
+    if (r.courseId && r.courseId !== get().selected?.id && get().view !== "design") await get().select(r.courseId);
+    else await refreshCourseData(false);
+    set({ message });
+  };
 
   const afterInstallChange = (summary: CourseSummary): void => {
     set({ courses: get().courses.map((c) => (c.id === summary.id ? summary : c)) });
@@ -124,10 +137,13 @@ export const useStore = create<State>((set, get) => {
         set(trail !== get().trail ? { update, trail } : { update });
       });
       racer.onRunSaved(() => void refreshCourseData(false));
+      racer.onImported((r) => void afterImport(r));
       const courses = await racer.listCourses();
       set({ courses });
       const first = courses.find((c) => c.id === app.lastCourseId) ?? courses[0];
       if (first) await get().select(first.id);
+      const opened = await racer.takeOpenedFiles();
+      if (opened) await afterImport(opened);
     },
 
     async select(id) {
@@ -142,15 +158,51 @@ export const useStore = create<State>((set, get) => {
       await refreshCourseData(true);
     },
 
-    async importCourse() {
+    async importFiles() {
       const racer = getRacer();
       if (!racer) return;
-      const r = await racer.importCourse();
+      const r = await racer.importFiles();
       if (!r.ok) {
-        if (r.error.code !== "cancelled") set({ message: { kind: "error", text: `Couldn't import that course. ${r.error.message}` } });
+        if (r.error.code !== "cancelled") set({ message: { kind: "error", text: `Couldn't import. ${r.error.message}` } });
         return;
       }
-      await get().select(r.value.id);
+      await afterImport(r.value);
+    },
+
+    async importDropped(files) {
+      const racer = getRacer();
+      if (!racer || files.length === 0) return;
+      const data = await Promise.all(files.map(async (f) => ({ name: f.name, data: new Uint8Array(await f.arrayBuffer()) })));
+      const r = await racer.importDropped(data);
+      if (!r.ok) {
+        set({ message: { kind: "error", text: `Couldn't import. ${r.error.message}` } });
+        return;
+      }
+      await afterImport(r.value);
+    },
+
+    async exportCourse() {
+      const racer = getRacer();
+      const c = get().selected;
+      if (!racer || !c) return;
+      const r = await racer.exportCourse(c.id);
+      if (!r.ok) {
+        if (r.error.code !== "cancelled") set({ message: { kind: "error", text: `Couldn't share the course. ${r.error.message}` } });
+        return;
+      }
+      set({ message: { kind: "info", text: `Saved ${r.value}. Send it to other pilots: they open it with Import… or drop it on Pylon Racer.` } });
+    },
+
+    async exportRun(id) {
+      const racer = getRacer();
+      if (!racer) return;
+      const r = await racer.exportRun(id);
+      if (!r.ok) {
+        if (r.error.code !== "cancelled") set({ message: { kind: "error", text: `Couldn't share the run. ${r.error.message}` } });
+        return;
+      }
+      const note = r.value.withCourse ? " The course goes with it." : " The course was edited since this run, so it doesn't go with it.";
+      set({ message: { kind: "info", text: `Saved ${r.value.fileName}.${note}` } });
     },
 
     async resetRace() {

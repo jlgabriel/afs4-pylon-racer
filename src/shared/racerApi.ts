@@ -30,7 +30,7 @@ export interface CourseSummary {
   revision: string;
   /** Length of one lap through the gate centers, meters. */
   lapLengthM: number;
-  /** Best finished total on this revision, seconds; null when none yet. */
+  /** Your best finished total on this revision (imported runs aside), seconds; null when none yet. */
   bestTotal: number | null;
   runs: number;
   /** Whether its pylons are installed in AFS4, and from which revision of the course. */
@@ -51,6 +51,8 @@ export interface SaveResult {
 
 export interface RunSummary {
   id: string;
+  /** Came from a .pylonrun file rather than flown here. */
+  imported: boolean;
   courseId: string;
   courseRevision: string;
   status: Run["result"]["status"];
@@ -64,6 +66,22 @@ export interface RunSummary {
   sourceHz: number;
   pilot: string;
   startedAt: string;
+}
+
+/** What an import did, file by file. */
+export interface ImportReport {
+  /** The course to show afterwards (the last course imported, or the course of the last run). */
+  courseId: string | null;
+  /** One line per file, e.g. "Daggett Sprint: course added." */
+  lines: string[];
+  /** Files that could not be imported (their lines say why). */
+  failed: number;
+}
+
+/** A file dropped on the window: its name and bytes (never its path). */
+export interface DroppedFile {
+  name: string;
+  data: Uint8Array;
 }
 
 export interface SourceStatus {
@@ -115,8 +133,13 @@ export interface RacerApi {
 
   listCourses(): Promise<CourseSummary[]>;
   getCourse(id: string): Promise<RacerResult<Course>>;
-  /** Opens a file dialog; accepts native courses and the old pylon-race tool's course.json. */
-  importCourse(): Promise<RacerResult<CourseSummary>>;
+  /** Opens a file dialog for .pylonrace, .pylonrun and .json files (native courses and runs, and the
+   *  old pylon-race tool's course.json). */
+  importFiles(): Promise<RacerResult<ImportReport>>;
+  /** Imports files dropped on the window, sent as bytes. */
+  importDropped(files: DroppedFile[]): Promise<RacerResult<ImportReport>>;
+  /** Saves the course as a .pylonrace through a save dialog; returns the file name. */
+  exportCourse(id: string): Promise<RacerResult<string>>;
   /** Validates and stores a course from the designer. An empty id means a new course. Gates with
    *  no terrain elevation get one looked up. */
   saveCourse(draft: Course): Promise<RacerResult<SaveResult>>;
@@ -139,9 +162,17 @@ export interface RacerApi {
 
   listRuns(courseId: string): Promise<RunSummary[]>;
   getRun(id: string): Promise<RacerResult<Run>>;
+  /** Saves the run as a .pylonrun through a save dialog. Its course goes along when the course is
+   *  still on the revision the run was flown on. */
+  exportRun(id: string): Promise<RacerResult<{ fileName: string; withCourse: boolean }>>;
 
   /** Live state, pushed by main at up to ~20 Hz. Returns an unsubscribe function. */
   onLive(listener: (u: LiveUpdate) => void): () => void;
   /** A run was just finished and saved. */
   onRunSaved(listener: (r: RunSummary) => void): () => void;
+  /** Files opened from the OS (double-click, "Open with") import on their own. The renderer calls
+   *  this once it listens to onImported: it collects what was opened before it was ready. */
+  takeOpenedFiles(): Promise<ImportReport | null>;
+  /** Files opened from the OS while the app runs were imported. */
+  onImported(listener: (r: ImportReport) => void): () => void;
 }
