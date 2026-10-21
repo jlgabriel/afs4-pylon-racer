@@ -28,9 +28,20 @@ Pylon Racer follows your flight live, times every gate, applies the penalties an
 - **Penalties** for missed gates and wrong-direction passes.
 - **Your runs are saved** and listed per course, best first.
 - **Demo flight**: watch any course being flown without the simulator.
-- **Import** courses made with the earlier pylon-race web editor (`course.json`).
 - **Three sample courses**: *Daggett Sprint* at KDAG (take off on runway 26 and hold runway heading),
   *Munich Sprint* and *Munich Diamond* near EDDM.
+
+## Sharing
+
+There is no server: courses and runs travel as files, through the forum or however you like.
+
+- **Share…** on a course saves a `.pylonrace` file. The pylons are not inside: the app installs them
+  on the other pilot's computer.
+- **Share…** on a run saves a `.pylonrun` file. Its course goes with it, unless you edited the course
+  after flying the run.
+- To open them, use **Import…**, drop the files on the window, or double-click them (installed app).
+  Runs from other pilots show up in the course's runs, marked *imported*; your best time stays your own.
+- **Import…** also takes courses made with the earlier pylon-race web editor (`course.json`).
 
 ## Connecting to Aerofly FS 4
 
