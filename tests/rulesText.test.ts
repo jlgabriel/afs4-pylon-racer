@@ -17,6 +17,7 @@ describe("rules text", () => {
   it("says why a race did not finish", () => {
     const pass = { step: 1, gateIndex: 1 } as Pass;
     expect(dnfText({ dnfReason: "reset", passes: [pass], sequence: [0, 1, 2], step: 2 })).toBe("reset in the sim after gate 2");
+    expect(dnfText({ dnfReason: "stopped", passes: [pass], sequence: [0, 1, 2], step: 2 })).toBe("crashed or paused after gate 2");
     expect(dnfText({ dnfReason: "missed-gate", passes: [pass], sequence: [0, 1, 2], step: 2 })).toBe("missed gate 3");
     expect(dnfText({ dnfReason: null, passes: [], sequence: [0, 1, 2], step: 0 })).toBeNull();
   });

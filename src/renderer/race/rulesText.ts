@@ -52,6 +52,10 @@ export function dnfText(race: Pick<RaceSnapshot, "dnfReason" | "passes" | "seque
       const last = race.passes[race.passes.length - 1];
       return last ? `reset in the sim after gate ${last.gateIndex + 1}` : "reset in the sim";
     }
+    case "stopped": {
+      const last = race.passes[race.passes.length - 1];
+      return last ? `crashed or paused after gate ${last.gateIndex + 1}` : "crashed or paused";
+    }
     case "missed-gate": {
       const gi = race.sequence[race.step];
       return gi !== undefined ? `missed gate ${gi + 1}` : "missed a gate";
@@ -63,7 +67,16 @@ export function dnfText(race: Pick<RaceSnapshot, "dnfReason" | "passes" | "seque
 
 /** The same, in a word or two, for the list of runs. */
 export function dnfShort(reason: DnfReason | null): string | null {
-  return reason === "reset" ? "reset in the sim" : reason === "missed-gate" ? "missed a gate" : null;
+  switch (reason) {
+    case "reset":
+      return "reset in the sim";
+    case "stopped":
+      return "crashed or paused";
+    case "missed-gate":
+      return "missed a gate";
+    case null:
+      return null;
+  }
 }
 
 function measured(p: Penalty, fmt: (v: number) => string): string {

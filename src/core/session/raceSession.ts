@@ -66,9 +66,9 @@ export class RaceSession {
     const events = this.engine.update(fix);
     const after = this.engine.raceStatus;
     if (before === "waiting" && after !== "waiting") this.startedAt = this.ctx.nowIso();
-    // The fix after a reset is somewhere else entirely: it is not part of the attempt's track.
-    const reset = events.some((e) => e.kind === "dnf" && e.reason === "reset");
-    if (!reset) this.recorder.push(fix, after !== "waiting");
+    // The fix that ends a reset or a stop may be somewhere else entirely: it is not part of the track.
+    const moved = events.some((e) => e.kind === "dnf" && e.reason !== "missed-gate");
+    if (!moved) this.recorder.push(fix, after !== "waiting");
 
     let run: Run | null = null;
     if ((after === "finished" || after === "dnf") && before !== after) {

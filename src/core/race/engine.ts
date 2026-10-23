@@ -21,9 +21,12 @@
 //
 // A jump between two consecutive fixes that no aircraft could fly (AFS4 resets the aircraft after a
 // crash — a pylon has collision — or the pilot moves it) is not flight: that segment is never judged,
-// and a race in progress ends as a DNF ("reset") at the last fix that moved before the jump: after a
-// crash AFS4 holds the aircraft on its crash menu, still streaming that same frozen fix, until the
-// pilot picks an option (flight test 2026-10-23: 37 s of identical fixes). See isJump.
+// and a race in progress ends as a DNF ("reset") at the last fix that moved before the jump. See isJump.
+//
+// An aircraft that does not move for STILL_S during a race ends it too, as a DNF ("stopped") at the
+// moment it stopped: after a crash AFS4 holds the aircraft on its crash menu, still streaming that same
+// frozen fix, until the pilot picks an option (flight test 2026-10-23: 37 s of identical fixes), and
+// pausing the sim mid-race is not allowed (Juan's call). A silent feed counts the same way.
 import { courseRevision, raceSequence, type Course, type Gate, type Rules } from "../course/course";
 import {
   centroid,
@@ -42,8 +45,11 @@ import type { Fix } from "./fix";
 
 export type RaceStatus = "waiting" | "running" | "finished" | "dnf";
 
-/** Why a race did not finish: a missed gate under missedGateIsDnf, or the sim moved the aircraft. */
-export const DNF_REASONS = ["missed-gate", "reset"] as const;
+/**
+ * Why a race did not finish: a missed gate under missedGateIsDnf, the sim moved the aircraft, or the
+ * aircraft stood still (a crash or a pause; they look the same from here).
+ */
+export const DNF_REASONS = ["missed-gate", "reset", "stopped"] as const;
 export type DnfReason = (typeof DNF_REASONS)[number];
 
 export const PENALTY_KINDS = ["missed-gate", "wrong-direction", "attitude", "too-high", "pylon-hit", "turn-cut"] as const;
@@ -257,9 +263,10 @@ export class RaceEngine {
     const movedT = this.movedT;
     if (prev === null || fix.lon !== prev.lon || fix.lat !== prev.lat) this.movedT = fix.t;
     if (prev === null || this.status === "finished" || this.status === "dnf") return [];
+    // Both end the attempt when the aircraft stopped moving, not at the last (frozen) fix.
+    if (this.status === "running" && movedT !== null && fix.t - movedT >= STILL_S) return [this.endAsDnf("stopped", movedT)];
     if (isJump(prev, fix)) {
-      // Waiting: the new position is simply where the aircraft is now. Racing: the attempt is over,
-      // since the aircraft stopped moving (the crash), not since the last frozen fix.
+      // Waiting: the new position is simply where the aircraft is now. Racing: the attempt is over.
       if (this.status !== "running") return [];
       return [this.endAsDnf("reset", movedT ?? prev.t)];
     }
@@ -458,6 +465,11 @@ export class RaceEngine {
  * would fire on timestamp jitter.
  */
 export const JUMP_MIN_M = 250;
+/**
+ * Racing with no change of position for this long is a DNF. At 40 Hz the DLL repeats a position for
+ * 25–50 ms (the sim updates slower), and a scenery-loading stutter lasts under a second.
+ */
+export const STILL_S = 3;
 /** Slack over the faster ground speed reported at either end, for noise and for speeding up mid-gap. */
 export const JUMP_SPEED_FACTOR = 1.5;
 export const JUMP_SPEED_SLACK_MS = 20;

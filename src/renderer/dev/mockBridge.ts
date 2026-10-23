@@ -189,16 +189,18 @@ export function installMockBridge(): void {
       session.reset();
       const s = session;
       // ?sloppy flies the demo badly on purpose (banked and high), to see the penalties on screen.
-      // ?reset crashes halfway: AFS4 sits 5 s on its crash menu, streaming the same frozen fix, then
-      // puts the aircraft back on a runway 3 km away, stopped.
+      // ?reset crashes halfway: AFS4 puts the aircraft back on a runway 3 km away, stopped.
+      // ?freeze crashes halfway too, but sits 5 s on AFS4's crash menu first, streaming the same
+      // frozen fix (what the sim really does unless the pilot picks an option right away).
       const query = new URLSearchParams(window.location.search);
       const sloppy = query.has("sloppy");
       const flown = demoFlight(s.course, { rateHz: 20 });
       const runway = destination(flown[0]!, 3000, 180);
       const crash = Math.floor(flown.length / 2);
+      const menu = query.has("freeze") ? 5 * 20 : 0;
       const fixes = flown.map((f, i) => {
-        if (query.has("reset") && i > crash + 5 * 20) return { ...f, ...runway, gsMs: 0, aglM: 0, rollDeg: 0, pitchDeg: 0 };
-        if (query.has("reset") && i > crash) return { ...flown[crash]!, t: f.t };
+        if ((query.has("reset") || menu) && i > crash + menu) return { ...f, ...runway, gsMs: 0, aglM: 0, rollDeg: 0, pitchDeg: 0 };
+        if (menu && i > crash) return { ...flown[crash]!, t: f.t };
         return sloppy ? { ...f, rollDeg: f.rollDeg + 35, altMslM: f.altMslM + 30, aglM: f.aglM === null ? null : f.aglM + 30 } : f;
       });
       const t0 = performance.now() / 1000;

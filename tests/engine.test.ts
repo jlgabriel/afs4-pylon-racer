@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { demoFlight } from "../src/core/demo/demoFlight";
-import { isJump, RaceEngine, type RaceEvent } from "../src/core/race/engine";
+import { isJump, RaceEngine, STILL_S, type RaceEvent } from "../src/core/race/engine";
 import type { Fix } from "../src/core/race/fix";
 import { fixAt, makeCourse, straightCourse, type GateSpec } from "./helpers";
 
@@ -407,29 +407,15 @@ describe("the sim resetting the aircraft", () => {
     expect(eng.raw(30)).toBeCloseTo(1.5, 3);
   });
 
-  it("ends the race when the aircraft stopped moving, even after the sim sat frozen", () => {
+  it("a reset right after a short freeze ends the race when the aircraft stopped moving", () => {
     const eng = new RaceEngine(straightCourse());
     eng.update(fixAt(0, -600, 0));
     eng.update(fixAt(0, -400, 1)); // start at t = 0.5
     eng.update(fixAt(0, -300, 2));
     eng.update(fixAt(0, -290, 2.2, { gsMs: 0 })); // crashed: frozen in place
-    eng.update(fixAt(0, -290, 5, { gsMs: 0 }));
-    // 20 s later, 3 km away: only 150 m/s, but the aircraft itself reported 0
-    expect(kinds(eng.update(fixAt(0, 2900, 25, { gsMs: 0 })))).toEqual(["dnf"]);
-    expect(eng.raw()).toBeCloseTo(1.7, 3);
-  });
-
-  it("does not count the time on AFS4's crash menu", () => {
-    // Flight test 2026-10-23: after the hit the DLL streamed the same fix (and the same 88.6 m/s)
-    // at ~16 Hz for 37 s, until "Restart airborne" put the aircraft 4 km away.
-    const eng = new RaceEngine(straightCourse());
-    eng.update(fixAt(0, -600, 0, { gsMs: 88.6 }));
-    eng.update(fixAt(0, -400, 1, { gsMs: 88.6 })); // start at t = 0.5
-    eng.update(fixAt(0, -300, 2, { gsMs: 88.6 })); // crash here
-    for (let t = 2.0625; t < 39; t += 0.0625) eng.update(fixAt(0, -300, t, { gsMs: 88.6 }));
-    const events = eng.update(fixAt(-1500, 3800, 39.01, { gsMs: 82 }));
-    expect(events).toEqual([{ kind: "dnf", reason: "reset", elapsed: expect.closeTo(1.5, 3) }]);
-    expect(eng.raw(60)).toBeCloseTo(1.5, 3);
+    eng.update(fixAt(0, -290, 4, { gsMs: 0 }));
+    expect(kinds(eng.update(fixAt(0, 2900, 4.1, { gsMs: 0 })))).toEqual(["dnf"]);
+    expect(eng.snapshot()).toMatchObject({ dnfReason: "reset", raw: expect.closeTo(1.7, 3) });
   });
 
   it("before the start, only moves the aircraft", () => {
@@ -460,5 +446,49 @@ describe("the sim resetting the aircraft", () => {
   it("fires on a reset at any rate", () => {
     expect(isJump(fixAt(0, 0, 0), fixAt(0, 3100, 0.025, { gsMs: 0 }))).toBe(true);
     expect(isJump(fixAt(0, 0, 0), fixAt(0, 3100, 0.2, { gsMs: 0 }))).toBe(true);
+  });
+});
+
+describe("the aircraft standing still during a race", () => {
+  it(`ends it ${STILL_S} s after it froze: AFS4's crash menu`, () => {
+    // Flight test 2026-10-23: after the hit the DLL streamed the same fix (and the same 88.6 m/s)
+    // at ~16 Hz for 37 s, until "Restart airborne" put the aircraft 4 km away.
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -600, 0, { gsMs: 88.6 }));
+    eng.update(fixAt(0, -400, 1, { gsMs: 88.6 })); // start at t = 0.5
+    eng.update(fixAt(0, -300, 2, { gsMs: 88.6 })); // crash here
+    const events: RaceEvent[] = [];
+    let endedAt = 0;
+    for (let t = 2.0625; t < 39; t += 0.0625) {
+      const ev = eng.update(fixAt(0, -300, t, { gsMs: 88.6 }));
+      if (ev.length && !endedAt) endedAt = t;
+      events.push(...ev);
+    }
+    expect(events).toEqual([{ kind: "dnf", reason: "stopped", elapsed: expect.closeTo(1.5, 3) }]);
+    expect(endedAt).toBeCloseTo(2 + STILL_S, 1);
+    expect(eng.update(fixAt(-1500, 3800, 39.01, { gsMs: 82 }))).toEqual([]); // Restart airborne
+    expect(eng.raw(60)).toBeCloseTo(1.5, 3);
+  });
+
+  it("ends it on the first fix after a silent pause", () => {
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -600, 0));
+    eng.update(fixAt(0, -400, 1)); // start at t = 0.5
+    eng.update(fixAt(0, -300, 2));
+    // paused for 10 s with nothing on the feed, then flying on from where it was
+    expect(eng.update(fixAt(0, -290, 12))).toEqual([{ kind: "dnf", reason: "stopped", elapsed: expect.closeTo(1.5, 3) }]);
+  });
+
+  it("does not end it for a shorter freeze, nor before the start", () => {
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -3000, 0, { gsMs: 0 }));
+    eng.update(fixAt(0, -3000, 60, { gsMs: 0 })); // a minute on the runway
+    eng.update(fixAt(0, -600, 70));
+    eng.update(fixAt(0, -400, 71)); // start at t = 70.5
+    eng.update(fixAt(0, -300, 72));
+    eng.update(fixAt(0, -300, 72 + STILL_S - 0.1)); // a long stutter
+    eng.update(fixAt(0, -280, 72 + STILL_S - 0.05));
+    eng.update(fixAt(0, -200, 76));
+    expect(eng.snapshot()).toMatchObject({ status: "running", dnfReason: null });
   });
 });
