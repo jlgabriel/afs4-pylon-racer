@@ -407,7 +407,7 @@ describe("the sim resetting the aircraft", () => {
     expect(eng.raw(30)).toBeCloseTo(1.5, 3);
   });
 
-  it("ends the race at the last fix before the jump, even after the sim sat frozen", () => {
+  it("ends the race when the aircraft stopped moving, even after the sim sat frozen", () => {
     const eng = new RaceEngine(straightCourse());
     eng.update(fixAt(0, -600, 0));
     eng.update(fixAt(0, -400, 1)); // start at t = 0.5
@@ -416,7 +416,20 @@ describe("the sim resetting the aircraft", () => {
     eng.update(fixAt(0, -290, 5, { gsMs: 0 }));
     // 20 s later, 3 km away: only 150 m/s, but the aircraft itself reported 0
     expect(kinds(eng.update(fixAt(0, 2900, 25, { gsMs: 0 })))).toEqual(["dnf"]);
-    expect(eng.raw()).toBeCloseTo(4.5, 3);
+    expect(eng.raw()).toBeCloseTo(1.7, 3);
+  });
+
+  it("does not count the time on AFS4's crash menu", () => {
+    // Flight test 2026-10-23: after the hit the DLL streamed the same fix (and the same 88.6 m/s)
+    // at ~16 Hz for 37 s, until "Restart airborne" put the aircraft 4 km away.
+    const eng = new RaceEngine(straightCourse());
+    eng.update(fixAt(0, -600, 0, { gsMs: 88.6 }));
+    eng.update(fixAt(0, -400, 1, { gsMs: 88.6 })); // start at t = 0.5
+    eng.update(fixAt(0, -300, 2, { gsMs: 88.6 })); // crash here
+    for (let t = 2.0625; t < 39; t += 0.0625) eng.update(fixAt(0, -300, t, { gsMs: 88.6 }));
+    const events = eng.update(fixAt(-1500, 3800, 39.01, { gsMs: 82 }));
+    expect(events).toEqual([{ kind: "dnf", reason: "reset", elapsed: expect.closeTo(1.5, 3) }]);
+    expect(eng.raw(60)).toBeCloseTo(1.5, 3);
   });
 
   it("before the start, only moves the aircraft", () => {

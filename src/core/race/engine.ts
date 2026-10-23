@@ -21,7 +21,9 @@
 //
 // A jump between two consecutive fixes that no aircraft could fly (AFS4 resets the aircraft after a
 // crash — a pylon has collision — or the pilot moves it) is not flight: that segment is never judged,
-// and a race in progress ends as a DNF ("reset") at the last fix before the jump. See isJump.
+// and a race in progress ends as a DNF ("reset") at the last fix that moved before the jump: after a
+// crash AFS4 holds the aircraft on its crash menu, still streaming that same frozen fix, until the
+// pilot picks an option (flight test 2026-10-23: 37 s of identical fixes). See isJump.
 import { courseRevision, raceSequence, type Course, type Gate, type Rules } from "../course/course";
 import {
   centroid,
@@ -172,6 +174,8 @@ export class RaceEngine {
   private step = 0;
   private prev: Fix | null = null;
   private last: Fix | null = null;
+  /** Time of the last fix whose position differed from the one before it. */
+  private movedT: number | null = null;
   private startT: number | null = null;
   private endT: number | null = null;
   private passes: Pass[] = [];
@@ -209,6 +213,7 @@ export class RaceEngine {
     this.step = 0;
     this.prev = null;
     this.last = null;
+    this.movedT = null;
     this.startT = null;
     this.endT = null;
     this.passes = [];
@@ -249,11 +254,14 @@ export class RaceEngine {
     if (prev !== null && fix.t <= prev.t) return []; // duplicate or out-of-order sample
     this.last = fix;
     this.prev = fix;
+    const movedT = this.movedT;
+    if (prev === null || fix.lon !== prev.lon || fix.lat !== prev.lat) this.movedT = fix.t;
     if (prev === null || this.status === "finished" || this.status === "dnf") return [];
     if (isJump(prev, fix)) {
-      // Waiting: the new position is simply where the aircraft is now. Racing: the attempt is over.
+      // Waiting: the new position is simply where the aircraft is now. Racing: the attempt is over,
+      // since the aircraft stopped moving (the crash), not since the last frozen fix.
       if (this.status !== "running") return [];
-      return [this.endAsDnf("reset", prev.t)];
+      return [this.endAsDnf("reset", movedT ?? prev.t)];
     }
 
     // Which crossings count is decided one by one, in time order, because one sample can start the
@@ -464,6 +472,8 @@ export type JumpSample = Pick<Fix, "lon" | "lat" | "t" | "gsMs">;
  * Judged against the reported ground speed rather than a fixed ceiling (e.g. 300 m/s) because AFS4
  * has jets that fly faster than that, and because after a crash the sim may sit frozen for a while
  * before the reset arrives: a 3 km jump 20 s later is only 150 m/s, yet the aircraft reported 0.
+ * (The DLL keeps streaming the frozen fix meanwhile, so in practice the jump lands between two
+ * fixes a few ms apart.)
  * A real gap in the feed keeps the straight-line distance at or below speed × time; the faster end
  * is the bound (not the mean), so braking hard across a gap is never taken for a jump.
  */
