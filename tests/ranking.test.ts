@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveClass } from "../src/core/ranking/classes";
-import { classesOf, leaderboard, pilotBest, pilotRuns } from "../src/core/ranking/ranking";
+import { classesOf, currentClass, leaderboard, pilotBest, pilotRuns } from "../src/core/ranking/ranking";
 import type { RunSummary } from "../src/shared/racerApi";
 
 let n = 0;
@@ -96,5 +96,24 @@ describe("ranking", () => {
     expect(pilotBest(runs, "Pedro", "aerobatic")?.total).toBe(47);
     expect(pilotBest(runs, "Pedro", "ga")?.total).toBe(30);
     expect(pilotBest(runs, "Juan", "ga")).toBeNull();
+  });
+});
+
+describe("currentClass", () => {
+  const demo = run({ source: "demo", classId: "aerobatic" });
+  const udp = run({ source: "udp", classId: "ga", aircraftId: null });
+
+  it("is the class flown now when telemetry says, a demo never counting as flying", () => {
+    expect(currentClass([demo, udp], "Juan", "jet")).toBe("jet");
+  });
+
+  it("is the class of the latest real run, even after a newer demo", () => {
+    const later = run({ source: "demo", classId: "aerobatic" });
+    expect(currentClass([udp, later], "Juan", undefined)).toBe("ga");
+  });
+
+  it("for a pilot with only demo flights, is the class of their latest demo", () => {
+    expect(currentClass([demo], "Juan", undefined)).toBe("aerobatic");
+    expect(currentClass([demo], "Rook", undefined)).toBeNull();
   });
 });

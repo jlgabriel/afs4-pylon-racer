@@ -99,11 +99,12 @@ export const useStore = create<State>((set, get) => {
     set(arm ? { courses, runs, bestRun: value, targetRun: value } : { courses, runs, bestRun: value });
   };
 
-  /** Follow the class flown now: the best (and, before the start, the target) is in that class. */
+  /** Follow the class flown now: the best (and, before the start, the target) is in that class. A
+   *  demo flight is not flying: it never ranks, so it leaves the class (and the ranking tab) alone. */
   const updateFlyingClass = (): void => {
     const s = get();
     const t = s.update?.telemetry;
-    if (!t?.active || !s.app) return;
+    if (!t?.active || t.active === "demo" || !s.app) return;
     const cls = resolveClass(t.aircraft, s.app.classChoices);
     if (cls === s.flyingClass) return;
     set({ flyingClass: cls });

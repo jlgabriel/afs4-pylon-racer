@@ -50,9 +50,12 @@ export function pilotBest(runs: readonly RunSummary[], pilot: string, cls: Class
 }
 
 /** The class to rank and race in: the one flying now if known (`undefined` = no telemetry yet),
- *  else the class of the pilot's latest real run, else unclassified. */
+ *  else the class of the pilot's latest real run, else of their latest demo (so a new pilot sees the
+ *  demo they just watched), else unclassified. */
 export function currentClass(runs: readonly RunSummary[], pilot: string, flying: ClassKey | undefined): ClassKey {
   if (flying !== undefined) return flying;
-  const latest = runs.filter((r) => r.pilot === pilot && !isDemo(r)).reduce<RunSummary | null>((a, r) => (!a || r.startedAt > a.startedAt ? r : a), null);
+  const latestOf = (rs: RunSummary[]): RunSummary | null => rs.reduce<RunSummary | null>((a, r) => (!a || r.startedAt > a.startedAt ? r : a), null);
+  const mine = runs.filter((r) => r.pilot === pilot);
+  const latest = latestOf(mine.filter((r) => !isDemo(r))) ?? latestOf(mine);
   return latest ? classKey(latest) : null;
 }

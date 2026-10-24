@@ -225,7 +225,7 @@ function ReadyList({ course, telemetry: t }: { course: Course; telemetry: Teleme
             ? "out of date in Aerofly FS 4: reinstall them, then restart the sim"
             : "not installed yet: the gates count anyway, but you won't see them. Install them, then restart the sim"}
       </ReadyItem>
-      {t?.active && (
+      {t?.active && t.active !== "demo" && (
         <ReadyItem state={cls !== null ? "ok" : "missing"} label="Class">
           {cls !== null ? `${t.aircraft ?? "your aircraft"} · ${classLabel(cls)}` : "choose your aircraft's class in the top bar to rank your runs"}
         </ReadyItem>

@@ -245,11 +245,11 @@ function TelemetryPills({ t }: { t: TelemetryStatus | null }) {
 }
 
 /** The aircraft and the class it is ranked in. An aircraft the app does not know, or none at all
- *  (UDP), gets a class picker; the choice is remembered. */
+ *  (UDP), gets a class picker; the choice is remembered. Not during a demo flight: it never ranks. */
 function AircraftClass({ t }: { t: TelemetryStatus }) {
   const choices = useStore((s) => s.app?.classChoices);
   const setAircraftClass = useStore((s) => s.setAircraftClass);
-  if (!choices || (!t.aircraft && !t.active)) return null;
+  if (!choices || (!t.aircraft && !t.active) || t.active === "demo") return null;
   const known = classOfAircraft(t.aircraft);
   if (known) {
     return (
