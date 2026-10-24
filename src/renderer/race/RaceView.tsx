@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import type { Course, Gate, GateType } from "../../core/course/course";
 import { relativeBearing } from "../../core/geo/geo";
 import type { Fix } from "../../core/race/fix";
-import type { Pass, Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
+import type { Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
+import { passDelta } from "../../core/run/delta";
 import type { Run } from "../../core/run/run";
 import { classLabel } from "../../core/ranking/classes";
 import { classesOf, currentClass, leaderboard, pilotRuns } from "../../core/ranking/ranking";
@@ -48,7 +49,7 @@ export function RaceView() {
   const demoRunning = update?.telemetry.demo.running ?? false;
   const nextGateIndex = live?.nextGate?.index ?? null;
   const lastPass = race && race.passes.length > 0 ? race.passes[race.passes.length - 1]! : null;
-  const lastDelta = lastPass && targetRun ? passDelta(lastPass, targetRun) : null;
+  const lastDelta = race && lastPass && targetRun ? passDelta(lastPass, race.penalties, targetRun) : null;
 
   return (
     <main className="race">
@@ -173,11 +174,6 @@ function TurnCue({ fix, gate }: { fix: Fix; gate: Gate }) {
       <span className="num">{text}</span>
     </span>
   );
-}
-
-function passDelta(pass: Pass, best: Run): number | null {
-  const ref = best.passes.find((p) => p.step === pass.step);
-  return ref && pass.step > 0 ? pass.elapsed - ref.elapsed : null;
 }
 
 function StatusLine({ race, telemetry }: { race: RaceSnapshot | null; telemetry: TelemetryStatus | null }) {
