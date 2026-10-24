@@ -36,6 +36,7 @@ export function installMockBridge(): void {
   const liveListeners = new Set<(u: LiveUpdate) => void>();
   const savedListeners = new Set<(r: RunSummary) => void>();
   let pilot = "Preview";
+  let pilots: string[] = [];
   let lastCourseId: string | null = null;
   let prefs: Prefs = { onTop: false };
   let session: RaceSession | null = null;
@@ -46,7 +47,15 @@ export function installMockBridge(): void {
   const summaries = (): RunSummary[] => [...runs.values()].map((r) => summarizeRun(r));
   const installedRefs = () => [...installed].map(([courseId, revision]) => ({ courseId, revision, folderName: `mock_${courseId}` }));
   const summary = (c: Course) => summarizeCourse(c, summaries(), installedRefs());
-  const info = (): AppInfo => ({ version: __APP_VERSION__, pilot, afs4Dir: "(preview)", afs4DirFound: true, lastCourseId, prefs });
+  const info = (): AppInfo => ({
+    version: __APP_VERSION__,
+    pilot,
+    pilots: [...new Set([...pilots, pilot])],
+    afs4Dir: "(preview)",
+    afs4DirFound: true,
+    lastCourseId,
+    prefs,
+  });
   const notFound = (id: string): RacerResult<never> => ({ ok: false, error: { code: "not-found", message: id } });
   const ok = <T>(value: T): RacerResult<T> => ({ ok: true, value });
 
@@ -70,7 +79,16 @@ export function installMockBridge(): void {
   const api: RacerApi = {
     getAppInfo: async () => info(),
     setPilot: async (name) => {
-      pilot = name.trim().slice(0, 32) || pilot;
+      const next = name.trim().slice(0, 32);
+      if (next) {
+        pilots = [...new Set([...pilots, pilot, next])];
+        pilot = next;
+        session?.setPilot(next);
+      }
+      return info();
+    },
+    removePilot: async (name) => {
+      if (name !== pilot) pilots = pilots.filter((p) => p !== name);
       return info();
     },
     chooseAfs4Dir: async () => info(),

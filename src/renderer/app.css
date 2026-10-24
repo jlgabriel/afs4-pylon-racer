@@ -34,6 +34,54 @@
   align-items: center;
   gap: var(--space-2);
 }
+/* Who is flying: the pilots of this computer. */
+.pilot {
+  position: relative;
+}
+.pilot-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-1));
+  z-index: 1000;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+}
+.pilot-menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+.pilot-menu button:hover {
+  background: var(--surface-3);
+}
+.pilot-item {
+  display: flex;
+  align-items: center;
+}
+.pilot-item > button:first-child {
+  flex: 1;
+}
+.pilot-item.active > button:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+.pilot-remove {
+  color: var(--text-3);
+}
+.pilot-menu .pilot-new {
+  color: var(--text-2);
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+.pilot-menu input {
+  width: 100%;
+}
 .topbar input {
   font: inherit;
   font-size: var(--size-sm);
@@ -326,13 +374,6 @@
 .runs td {
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--line);
-}
-.runs td:last-child {
-  text-align: right;
-}
-.runs button.small {
-  padding: 0 var(--space-2);
-  font-size: var(--size-xs);
 }
 
 /* --- messages --------------------------------------------------------------------------------- */

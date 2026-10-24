@@ -73,6 +73,11 @@ export class RaceController {
     return summarizeCourse(course, this.storage.listRuns());
   }
 
+  /** The pilot of the attempts from now on (the one in progress keeps whoever started it). */
+  setPilot(pilot: string): void {
+    this.session?.setPilot(pilot);
+  }
+
   get activeCourse(): Course | null {
     return this.session?.course ?? null;
   }

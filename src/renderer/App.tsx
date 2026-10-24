@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TelemetryStatus } from "../shared/racerApi";
 import { fmtDistance, fmtTime } from "./app/format";
 import { Designer } from "./design/Designer";
@@ -93,11 +93,8 @@ function useFileDrop(): boolean {
 function TopBar() {
   const app = useStore((s) => s.app);
   const telemetry = useStore((s) => s.update?.telemetry ?? null);
-  const setPilot = useStore((s) => s.setPilot);
   const setPrefs = useStore((s) => s.setPrefs);
   const onTop = app?.prefs.onTop ?? false;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
 
   return (
     <header className="topbar">
@@ -116,30 +113,93 @@ function TopBar() {
             {onTop ? "Pinned on top" : "Pin on top"}
           </button>
         )}
-        {editing ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void setPilot(draft);
-              setEditing(false);
-            }}
-          >
-            <input autoFocus value={draft} maxLength={32} onChange={(e) => setDraft(e.target.value)} onBlur={() => setEditing(false)} />
-          </form>
-        ) : (
-          <button
-            className="pilot"
-            title="Change your pilot name"
-            onClick={() => {
-              setDraft(app?.pilot ?? "");
-              setEditing(true);
-            }}
-          >
-            {app?.pilot ?? "Pilot"}
-          </button>
-        )}
+        <PilotMenu />
       </div>
     </header>
+  );
+}
+
+/** The pilots of this computer (brothers who compete): switch, add, remove. Runs from the next start
+ *  belong to the active pilot. */
+function PilotMenu() {
+  const app = useStore((s) => s.app);
+  const setPilot = useStore((s) => s.setPilot);
+  const removePilot = useStore((s) => s.removePilot);
+  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+
+  const close = (): void => {
+    setOpen(false);
+    setAdding(false);
+    setDraft("");
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent): void => {
+      if (box.current && !box.current.contains(e.target as Node)) close();
+    };
+    const esc = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const choose = (name: string): void => {
+    close();
+    if (name !== app?.pilot) void setPilot(name);
+  };
+
+  if (!app) return null;
+  return (
+    <div className="pilot" ref={box}>
+      <button aria-haspopup="menu" aria-expanded={open} title="Who is flying: switch pilots or add one" onClick={() => (open ? close() : setOpen(true))}>
+        {app.pilot} ▾
+      </button>
+      {open && (
+        <div className="pilot-menu" role="menu">
+          {app.pilots.map((p) => (
+            <div key={p} className={`pilot-item ${p === app.pilot ? "active" : ""}`}>
+              <button role="menuitemradio" aria-checked={p === app.pilot} onClick={() => choose(p)}>
+                {p}
+              </button>
+              {p !== app.pilot && (
+                <button
+                  className="pilot-remove"
+                  title={`Remove ${p} from the pilots (their runs are kept)`}
+                  onClick={() => {
+                    if (window.confirm(`Remove ${p} from the pilots? Their runs are kept.`)) void removePilot(p);
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          {adding ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (draft.trim()) choose(draft.trim());
+              }}
+            >
+              <input autoFocus value={draft} maxLength={32} placeholder="Callsign" onChange={(e) => setDraft(e.target.value)} />
+            </form>
+          ) : (
+            <button className="pilot-new" role="menuitem" onClick={() => setAdding(true)}>
+              New pilot…
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

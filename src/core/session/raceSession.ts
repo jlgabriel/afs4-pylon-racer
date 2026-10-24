@@ -28,6 +28,7 @@ export interface FeedResult {
 }
 
 export interface SessionContext {
+  /** The active pilot when the session begins; setPilot changes it. */
   pilot: string;
   appVersion: string;
   newId: () => string;
@@ -42,12 +43,21 @@ export class RaceSession {
   private startedAt: string | null = null;
   private lastSource: SourceInfo | null = null;
   private aircraftSeen: string | null = null;
+  private pilot: string;
+  /** Who was flying when the race started: the run is theirs even if the pilot is switched mid-race. */
+  private racePilot: string | null = null;
 
   constructor(
     readonly course: Course,
     private readonly ctx: SessionContext,
   ) {
     this.engine = new RaceEngine(course);
+    this.pilot = ctx.pilot;
+  }
+
+  /** Switch pilots on this computer: takes effect from the next start. */
+  setPilot(pilot: string): void {
+    this.pilot = pilot;
   }
 
   reset(): void {
@@ -56,6 +66,7 @@ export class RaceSession {
     this.lastFix = null;
     this.startedAt = null;
     this.aircraftSeen = null;
+    this.racePilot = null;
   }
 
   feed(fix: Fix, source: SourceInfo): FeedResult {
@@ -65,7 +76,10 @@ export class RaceSession {
     const before = this.engine.raceStatus;
     const events = this.engine.update(fix);
     const after = this.engine.raceStatus;
-    if (before === "waiting" && after !== "waiting") this.startedAt = this.ctx.nowIso();
+    if (before === "waiting" && after !== "waiting") {
+      this.startedAt = this.ctx.nowIso();
+      this.racePilot = this.pilot;
+    }
     // The fix that ends a reset or a stop may be somewhere else entirely: it is not part of the track.
     const moved = events.some((e) => e.kind === "dnf" && e.reason !== "missed-gate");
     if (!moved) this.recorder.push(fix, after !== "waiting");
@@ -75,7 +89,7 @@ export class RaceSession {
       run = buildRun(this.engine.snapshot(), this.recorder.track(), {
         id: this.ctx.newId(),
         courseName: this.course.name,
-        pilot: this.ctx.pilot,
+        pilot: this.racePilot ?? this.pilot,
         aircraftId: this.aircraftSeen,
         classId: classOfAircraft(this.aircraftSeen),
         source: source.kind,

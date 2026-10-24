@@ -107,7 +107,10 @@ export interface LiveUpdate {
 
 export interface AppInfo {
   version: string;
+  /** The active pilot. */
   pilot: string;
+  /** The pilots of this computer, the active one included. */
+  pilots: string[];
   /** The AFS4 user folder pylons are installed into, and whether it exists. */
   afs4Dir: string;
   afs4DirFound: boolean;
@@ -123,7 +126,11 @@ export interface Prefs {
 
 export interface RacerApi {
   getAppInfo(): Promise<AppInfo>;
+  /** Makes this the active pilot, adding it to the computer's pilots if new. Runs from the next
+   *  start are theirs. */
   setPilot(name: string): Promise<AppInfo>;
+  /** Drops a pilot from the list (never the active one). Their runs are kept. */
+  removePilot(name: string): Promise<AppInfo>;
   /** Opens a folder dialog to pick the AFS4 user folder (the one holding scenery/). */
   chooseAfs4Dir(): Promise<AppInfo>;
   /** Changes some of the preferences; main applies "on top" to the window itself. */

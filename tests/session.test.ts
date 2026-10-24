@@ -4,7 +4,7 @@ import { importRctCourse } from "../src/core/course/importRct";
 import { demoFlight } from "../src/core/demo/demoFlight";
 import { sampleCourses } from "../src/core/demo/sampleCourses";
 import { haversine } from "../src/core/geo/geo";
-import { parseRun, Recorder, TRACK_FIELDS } from "../src/core/run/run";
+import { parseRun, Recorder, TRACK_FIELDS, type Run } from "../src/core/run/run";
 import { RaceSession, type SessionContext } from "../src/core/session/raceSession";
 import { fixAt } from "./helpers";
 
@@ -67,6 +67,21 @@ describe("a finished session becomes a valid run", () => {
     expect(parsed.passes).toHaveLength(5);
     expect(parsed.track.fields).toEqual([...TRACK_FIELDS]);
     expect(parsed.track.samples.length).toBeGreaterThan(50);
+  });
+
+  it("belongs to the pilot who crossed the start, even if pilots are switched mid-race", () => {
+    const session = new RaceSession(munich, ctx);
+    const flight = demoFlight(munich, { rateHz: 10 });
+    session.setPilot("Brother"); // switched before taking off: his run
+    let run: Run | null = null;
+    flight.forEach((f, i) => {
+      if (i === Math.floor(flight.length / 2)) session.setPilot("Juan"); // too late for this attempt
+      run = session.feed(f, { kind: "demo", hz: 10, aircraft: null }).run ?? run;
+    });
+    expect(run!.pilot).toBe("Brother");
+    session.reset();
+    for (const f of flight) run = session.feed(f, { kind: "demo", hz: 10, aircraft: null }).run ?? run;
+    expect(run!.pilot).toBe("Juan");
   });
 
   it("produces the run exactly once", () => {

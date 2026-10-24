@@ -12,6 +12,7 @@ function subscribe<T>(channel: string, listener: (value: T) => void): () => void
 const racer: RacerApi = {
   getAppInfo: () => ipcRenderer.invoke("racer:getAppInfo"),
   setPilot: (name) => ipcRenderer.invoke("racer:setPilot", name),
+  removePilot: (name) => ipcRenderer.invoke("racer:removePilot", name),
   chooseAfs4Dir: () => ipcRenderer.invoke("racer:chooseAfs4Dir"),
   setPrefs: (patch) => ipcRenderer.invoke("racer:setPrefs", patch),
   listCourses: () => ipcRenderer.invoke("racer:listCourses"),

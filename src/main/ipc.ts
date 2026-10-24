@@ -46,6 +46,7 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
     return {
       version: __APP_VERSION__,
       pilot: s.pilot,
+      pilots: [...new Set([...s.pilots, s.pilot])],
       afs4Dir: afs4Dir(),
       afs4DirFound: existsSync(afs4Dir()),
       lastCourseId: s.lastCourseId,
@@ -118,7 +119,17 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
 
   ipcMain.handle("racer:setPilot", (_e, name: unknown) => {
     const pilot = typeof name === "string" ? name.trim().slice(0, 32) : "";
-    if (pilot) storage.writeSettings({ pilot });
+    if (pilot) {
+      const s = storage.readSettings();
+      storage.writeSettings({ pilot, pilots: [...new Set([...s.pilots, s.pilot, pilot])] });
+      race.setPilot(pilot);
+    }
+    return appInfo();
+  });
+
+  ipcMain.handle("racer:removePilot", (_e, name: unknown) => {
+    const s = storage.readSettings();
+    if (typeof name === "string" && name !== s.pilot) storage.writeSettings({ pilots: s.pilots.filter((p) => p !== name) });
     return appInfo();
   });
 

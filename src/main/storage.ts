@@ -1,7 +1,7 @@
 // Everything the app keeps on disk, under userData:
 //   courses/<id>.json   one native course per file
 //   runs/<id>.json      one run per file (with its track)
-//   settings.json       pilot, AFS4 folder override, last course, removed samples
+//   settings.json       pilots, AFS4 folder override, last course, removed samples
 // Files are validated on the way in; a file that fails is logged and skipped, never fatal. Run
 // summaries are cached in memory after the first read (the tracks make run files large). The
 // runs/imported/ folder of v0.4.0-pre (runs from .pylonrun files) is left alone and never read.
@@ -17,7 +17,10 @@ import { writeFileAtomic } from "./fsAtomic";
 import { log } from "./log";
 
 const settingsSchema = z.object({
+  /** The active pilot. */
   pilot: z.string().min(1).max(32).default("Pilot"),
+  /** Every pilot of this computer (brothers who compete), the active one included once it changed. */
+  pilots: z.array(z.string().min(1).max(32)).default([]),
   /** Overrides the detected AFS4 user folder. */
   afs4Dir: z.string().nullable().default(null),
   lastCourseId: z.string().nullable().default(null),

@@ -24,7 +24,7 @@ interface State {
   courses: CourseSummary[];
   selected: Course | null;
   runs: RunSummary[];
-  /** The best finished run of the selected course revision. */
+  /** The active pilot's best finished run of the selected course revision. */
   bestRun: Run | null;
   /** The best run as it was when the current attempt was armed: what this attempt races against.
    *  It stays put when the attempt itself becomes the new best, so it is never compared to itself. */
@@ -53,6 +53,7 @@ interface State {
   startDemo(): Promise<void>;
   stopDemo(): Promise<void>;
   setPilot(name: string): Promise<void>;
+  removePilot(name: string): Promise<void>;
   chooseAfs4Dir(): Promise<void>;
   setPrefs(patch: Partial<Prefs>): Promise<void>;
   dismissMessage(): void;
@@ -82,7 +83,8 @@ export const useStore = create<State>((set, get) => {
     }
     const revision = courseRevision(course);
     const runs = (await racer.listRuns(course.id)).filter((r) => r.courseRevision === revision);
-    const best = runs.find((r) => r.status === "finished");
+    const pilot = get().app?.pilot;
+    const best = runs.find((r) => r.status === "finished" && r.pilot === pilot);
     const bestRun = best ? await racer.getRun(best.id) : null;
     const value = bestRun?.ok ? bestRun.value : null;
     set(arm ? { courses, runs, bestRun: value, targetRun: value } : { courses, runs, bestRun: value });
@@ -211,6 +213,14 @@ export const useStore = create<State>((set, get) => {
       const racer = getRacer();
       if (!racer) return;
       set({ app: await racer.setPilot(name) });
+      // The new pilot races against their own best; an attempt already under way keeps its target.
+      await refreshCourseData(get().update?.live?.race.status !== "running");
+    },
+
+    async removePilot(name) {
+      const racer = getRacer();
+      if (!racer) return;
+      set({ app: await racer.removePilot(name) });
     },
 
     async chooseAfs4Dir() {
