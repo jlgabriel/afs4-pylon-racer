@@ -1,53 +1,67 @@
 /*
  * Design tokens — the ONLY place colors, type, spacing and motion are defined. Screens and
- * components use these variables and nothing else, so the final design pass (v0.9) restyles the app
- * by changing this file and the base components, not every screen.
+ * components use these variables and nothing else.
  *
- * The current values are a deliberately plain, neutral dark theme.
+ * The look (v0.5): a night-blue cockpit with pylon orange as the one accent. Orange means "act"
+ * (primary buttons, the active pilot, the course you are on); green, red, purple and amber keep their
+ * race meaning (on pace, lost time or penalty, best ever, what the next gate asks for).
  */
 :root {
   /* surfaces, darkest to lightest */
-  --surface-0: #111114;
-  --surface-1: #19191e;
-  --surface-2: #222229;
-  --surface-3: #2c2c35;
+  --surface-0: #0b0e16;
+  --surface-1: #111622;
+  --surface-2: #192031;
+  --surface-3: #232c41;
+  --surface-glass: rgba(17, 22, 34, 0.86); /* panels floating over a map */
 
-  --text-1: #ecebe6;
-  --text-2: #a3a29b;
-  --text-3: #6f6e69;
+  --text-1: #edf1f7;
+  --text-2: #9aa5b8;
+  --text-3: #5f6a7e;
 
-  --line: #2e2e36;
-  --line-strong: #44444e;
+  --line: #1e2637;
+  --line-strong: #2f3a52;
+
+  /* the one accent: pylon orange */
+  --accent: #ff5a1f;
+  --accent-hover: #ff7440;
+  --accent-soft: rgba(255, 90, 31, 0.14);
+  --on-accent: #ffffff;
 
   /* meaning, not decoration */
-  --good: #6fbf3a;
-  --bad: #e5534b;
-  --best: #9b8cf0; /* best-ever sector */
-  --warn: #e8a33a;
-  --info: #4c9be8;
-  --accent: #e8a33a;
+  --good: #3ddc84;
+  --good-soft: rgba(61, 220, 132, 0.14);
+  --bad: #ff4d5e;
+  --bad-soft: rgba(255, 77, 94, 0.14);
+  --best: #b48cff; /* best ever */
+  --best-soft: rgba(180, 140, 255, 0.16);
+  --warn: #ffb020;
+  --warn-soft: rgba(255, 176, 32, 0.14);
+  --info: #4cb4ff;
 
   /* gate types on the map */
-  --gate-start: #6fbf3a;
-  --gate-finish: #ecebe6;
-  --gate-gate: #e5534b;
-  --gate-level: #4c9be8;
-  --gate-knife: #e8a33a;
-  --gate-turn: #c46bd8;
+  --gate-start: #3ddc84;
+  --gate-finish: #edf1f7;
+  --gate-gate: #ff4d5e;
+  --gate-level: #4cb4ff;
+  --gate-knife: #ffb020;
+  --gate-turn: #c77dff;
 
   /* race minimap over satellite imagery */
-  --map-dim: rgba(17, 17, 20, 0.35); /* darkens the photo so gates and trail stay readable */
-  --map-route: rgba(236, 235, 230, 0.22);
+  --map-dim: rgba(11, 14, 22, 0.38); /* darkens the photo so gates and trail stay readable */
+  --map-route: rgba(237, 241, 247, 0.24);
 
-  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-num: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --font-ui: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* times, headings and the big numbers */
+  --font-display: "Barlow Semi Condensed", "Inter Variable", system-ui, sans-serif;
+  --font-num: "Inter Variable", system-ui, sans-serif; /* with tabular figures (.num) */
 
   --size-xs: 11px;
   --size-sm: 13px;
-  --size-md: 15px;
+  --size-md: 14px;
   --size-lg: 18px;
-  --size-xl: 24px;
-  --size-timer: 64px;
+  --size-xl: 26px;
+  --size-xxl: 34px;
+  --size-timer: 88px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -56,9 +70,12 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --focus: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent);
 
   --dur-fast: 120ms;
   --dur-base: 220ms;

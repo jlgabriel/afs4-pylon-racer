@@ -1,4 +1,4 @@
-/* Layout of the v0.1 screens. Tokens only; the look is deliberately plain until the design stage. */
+/* Layout and the look of every screen. Tokens only (theme/tokens.css). */
 .app {
   display: flex;
   flex-direction: column;
@@ -10,23 +10,54 @@
   outline-offset: calc(-1 * var(--space-2));
 }
 
+/* --- top bar ---------------------------------------------------------------------------------- */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-2) var(--space-4);
+  height: 52px;
+  flex-shrink: 0;
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--line);
   background: var(--surface-1);
 }
 .brand {
-  font-weight: 600;
-  font-size: var(--size-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
 }
-.brand .muted {
+.brand-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.brand-version {
   font-size: var(--size-xs);
-  font-weight: 400;
-  margin-left: var(--space-1);
+  color: var(--text-3);
+  margin-left: 2px;
+  align-self: flex-end;
+  padding-bottom: 15px;
+}
+.logo-pylon {
+  fill: var(--accent);
+}
+.logo-check {
+  fill: var(--text-1);
+}
+.logo-line {
+  stroke: var(--text-1);
+}
+.logo-line-far {
+  stroke: var(--text-1);
+  stroke-opacity: 0.35;
+}
+.logo-plane {
+  fill: var(--text-1);
 }
 .topbar-right,
 .pills {
@@ -34,23 +65,54 @@
   align-items: center;
   gap: var(--space-2);
 }
+.toggle.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 /* Who is flying: the pilots of this computer. */
 .pilot {
   position: relative;
 }
+.pilot-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-3) 3px 3px;
+  border-radius: 999px;
+}
+.pilot-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--size-sm);
+}
+.pilot-caret {
+  color: var(--text-3);
+  font-size: var(--size-xs);
+}
 .pilot-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + var(--space-1));
+  top: calc(100% + var(--space-2));
   z-index: 1000;
-  min-width: 200px;
+  min-width: 220px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-1);
+  gap: 2px;
+  padding: var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
 }
 .pilot-menu button {
   border: none;
@@ -78,21 +140,20 @@
   color: var(--text-2);
   border-top: 1px solid var(--line);
   border-radius: 0;
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
 }
 .pilot-menu input {
   width: 100%;
 }
-.topbar input {
-  font: inherit;
-  font-size: var(--size-sm);
-  background: var(--surface-0);
-  color: var(--text-1);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-2);
-  width: 160px;
+/* An aircraft the app does not know: pick the class it is ranked in. */
+.class-pick select {
+  font-size: var(--size-xs);
+  padding: 0 var(--space-1);
+  background: var(--surface-1);
 }
 
+/* --- messages --------------------------------------------------------------------------------- */
 .message {
   display: flex;
   justify-content: space-between;
@@ -100,12 +161,20 @@
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
   background: var(--surface-2);
-  border-bottom: 1px solid var(--bad);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--bad);
   font-size: var(--size-sm);
+}
+.message-info {
+  border-left-color: var(--info);
 }
 /* An import reports one line per file. */
 .message > span:first-child {
   white-space: pre-line;
+}
+.message-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .body {
@@ -122,7 +191,7 @@
 
 /* --- course list ------------------------------------------------------------------------------ */
 .courses {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
   border-right: 1px solid var(--line);
   background: var(--surface-1);
@@ -132,7 +201,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+.courses-tools {
+  display: flex;
+  gap: var(--space-1);
 }
 .courses ul {
   list-style: none;
@@ -141,35 +214,75 @@
 }
 .course {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
   text-align: left;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-1);
+  padding: var(--space-2);
+  margin-bottom: 2px;
+}
+.course:hover {
+  background: var(--surface-2);
 }
 .course.active {
   background: var(--surface-2);
   border-color: var(--line-strong);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.course-sketch {
+  flex-shrink: 0;
+  background: var(--surface-0);
+  border-radius: var(--radius-sm);
+}
+.course-sketch path {
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.course-sketch circle {
+  fill: var(--gate-color);
+}
+.course-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 .course-name {
   font-size: var(--size-md);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.course-meta,
-.course-best {
+.course-meta {
   font-size: var(--size-xs);
+  color: var(--text-2);
+}
+.course-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+.course-best {
+  font-size: var(--size-md);
+  color: var(--text-1);
+}
+.course-nobest {
+  font-size: var(--size-xs);
+  color: var(--text-3);
 }
 
 /* --- race ------------------------------------------------------------------------------------- */
 .race {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -181,55 +294,170 @@
   gap: var(--space-4);
 }
 .race-head h1 {
-  font-size: var(--size-xl);
+  font-size: var(--size-xxl);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+.race-meta {
+  font-size: var(--size-sm);
+  color: var(--text-2);
+  margin-top: var(--space-1);
+}
+.race-desc {
+  font-size: var(--size-sm);
+  color: var(--text-2);
+  max-width: 760px;
+  margin: var(--space-2) 0 0;
+  white-space: pre-line; /* keep the author's paragraphs */
+  user-select: text;
 }
 .race-actions {
   display: flex;
   gap: var(--space-2);
+  flex-shrink: 0;
 }
+.race-actions button {
+  padding: 7px var(--space-4);
+}
+.course-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.course-tools-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.install-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--size-sm);
+  color: var(--text-2);
+  margin-right: var(--space-2);
+}
+.install-state .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.install-state.current {
+  color: var(--good);
+}
+.install-state.current .dot {
+  background: var(--good);
+}
+.install-state.outdated {
+  color: var(--warn);
+}
+.install-state.outdated .dot {
+  background: var(--warn);
+}
+
 .race-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: var(--space-4);
 }
 .race-main {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
+.race-main.status-running {
+  border-color: var(--accent-soft);
+}
+
 .status-line {
-  font-size: var(--size-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  font-size: var(--size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-2);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 3px 12px 3px 10px;
 }
-.status-running {
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.status-line.live .status-dot {
+  background: var(--warn);
+}
+.status-line.status-running {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.status-line.status-running .status-dot {
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+.status-line.status-finished {
   color: var(--good);
+  background: var(--good-soft);
 }
-.status-dnf {
+.status-line.status-finished .status-dot {
+  background: var(--good);
+}
+.status-line.status-dnf {
   color: var(--bad);
+  background: var(--bad-soft);
 }
+.status-line.status-dnf .status-dot {
+  background: var(--bad);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
 .timer {
   font-size: var(--size-timer);
-  font-weight: 600;
-  line-height: 1;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+}
+.status-none .timer,
+.status-waiting .timer {
+  color: var(--text-3);
 }
 .deltas {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
   font-size: var(--size-sm);
-  min-height: 1.4em;
+  min-height: 1.45em;
 }
+.delta {
+  font-weight: 600;
+}
+
 .gate-strip {
   display: flex;
-  flex-wrap: wrap;
   gap: 3px;
-  margin: var(--space-2) 0;
 }
 .gate-cell {
-  width: 18px;
-  height: 7px;
-  border-radius: 2px;
+  flex: 1;
+  max-width: 48px;
+  min-width: 6px;
+  height: 8px;
+  border-radius: 3px;
   background: var(--surface-3);
+  transition: background var(--dur-base);
 }
 .gate-cell.done {
   background: var(--good);
@@ -242,27 +470,41 @@
 }
 .gate-cell.next {
   background: var(--text-1);
+  animation: pulse 1.2s ease-in-out infinite;
 }
+.live-penalties {
+  font-size: var(--size-sm);
+}
+
 .next-gate {
-  border-top: 1px solid var(--line);
-  padding-top: var(--space-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--gate-color);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .next-gate-name {
-  font-size: var(--size-lg);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--size-xl);
+  font-weight: 700;
+  line-height: 1.15;
 }
 .next-gate-needs {
   color: var(--warn);
   font-size: var(--size-lg);
   font-weight: 600;
 }
-.live-penalties {
-  font-size: var(--size-sm);
-}
 .next-gate-where {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  margin-top: var(--space-1);
+}
+.next-gate-dist {
+  font-size: var(--size-lg);
+  color: var(--text-2);
 }
 .turn-cue {
   display: inline-flex;
@@ -280,24 +522,102 @@
   height: 32px;
   fill: currentColor;
 }
-.result {
-  border-top: 1px solid var(--line);
-  padding-top: var(--space-3);
+
+/* Before the start: data, pylons, class, where to start. */
+.ready {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--size-sm);
+}
+.ready-item {
+  display: grid;
+  grid-template-columns: 20px 76px minmax(0, 1fr);
+  align-items: baseline;
   gap: var(--space-2);
+  color: var(--text-2);
+}
+.ready-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: var(--size-xs);
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--text-2);
+  align-self: center;
+}
+.ready-item.ok .ready-mark {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.ready-item.missing .ready-mark {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ready-item.todo .ready-mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ready-label {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.ready-text a {
+  color: var(--info);
+}
+
+.result {
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.result.new-best {
+  background: linear-gradient(135deg, var(--best-soft), var(--surface-2) 60%);
+  box-shadow: inset 0 0 0 1px var(--best-soft);
+}
+.result.dnf {
+  background: linear-gradient(135deg, var(--bad-soft), var(--surface-2) 60%);
 }
 .result-title {
+  font-family: var(--font-display);
   font-size: var(--size-xl);
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.15;
 }
 .result-rows {
   display: grid;
   /* The reason wraps instead of pushing the seconds out of the card. */
   grid-template-columns: minmax(0, max-content) max-content;
   column-gap: var(--space-5);
-  row-gap: 2px;
+  row-gap: 3px;
   font-size: var(--size-sm);
+  align-items: baseline;
+}
+.result-total-label,
+.result-total {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--line-strong);
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
+}
+.result-total-label {
+  color: var(--text-2);
+}
+.result-total {
+  font-size: var(--size-xl);
+  line-height: 1;
 }
 .laps {
   font-size: var(--size-sm);
@@ -307,6 +627,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-3);
 }
 .minimap-box {
   position: relative;
@@ -315,12 +636,13 @@
   display: block;
   width: 100%;
   background: var(--surface-0);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 .minimap-label {
   fill: var(--text-1);
   font-size: 11px;
   font-family: var(--font-num);
+  font-weight: 600;
   paint-order: stroke;
   stroke: var(--surface-0);
   stroke-width: 3px;
@@ -339,6 +661,7 @@
   left: var(--space-2);
   font-size: var(--size-xs);
   padding: 2px var(--space-2);
+  background: var(--surface-glass);
 }
 .flight-values {
   display: grid;
@@ -347,16 +670,20 @@
 }
 .value {
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
 }
 .value-n {
-  font-size: var(--size-xl);
+  font-size: 30px;
+  line-height: 1.1;
 }
 .value-u {
+  font-family: var(--font-ui);
+  font-weight: 500;
   font-size: var(--size-xs);
 }
 
+/* --- ranking ---------------------------------------------------------------------------------- */
 .runs-head {
   display: flex;
   align-items: center;
@@ -370,29 +697,21 @@
 }
 .class-tab {
   font-size: var(--size-xs);
-  padding: var(--space-1) var(--space-2);
+  padding: 3px var(--space-3);
+  border-radius: 999px;
+  background: transparent;
 }
 .class-tab.on {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--accent-soft);
 }
 .runs-sub {
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 .runs-empty {
   margin-top: var(--space-2);
   font-size: var(--size-sm);
-}
-.runs tr.me td {
-  color: var(--accent);
-}
-/* An aircraft the app does not know: pick the class it is ranked in. */
-.class-pick select {
-  font: inherit;
-  color: inherit;
-  background: var(--surface-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
 }
 .runs table {
   width: 100%;
@@ -402,62 +721,38 @@
 }
 .runs th {
   text-align: left;
-  font-weight: 400;
-  color: var(--text-2);
+  font-weight: 600;
+  color: var(--text-3);
   font-size: var(--size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   border-bottom: 1px solid var(--line);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2);
 }
 .runs td {
-  padding: var(--space-1) var(--space-2);
+  padding: 7px var(--space-2);
   border-bottom: 1px solid var(--line);
 }
-
-/* --- messages --------------------------------------------------------------------------------- */
-.message-info {
-  border-bottom-color: var(--info);
+.runs tbody tr:hover td {
+  background: var(--surface-2);
 }
-.message-actions {
-  display: flex;
-  gap: var(--space-2);
+.runs tr.me td {
+  background: var(--accent-soft);
 }
-.warn {
-  color: var(--warn);
+.runs tr.me .pilot-cell {
+  color: var(--accent);
+  font-weight: 600;
 }
-
-/* --- course list and tools --------------------------------------------------------------------- */
-.courses-tools {
-  display: flex;
-  gap: var(--space-1);
-}
-.race-desc {
-  font-size: var(--size-sm);
-  max-width: 640px;
-  margin-top: var(--space-1);
-  white-space: pre-line; /* keep the author's paragraphs */
-}
-.course-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-.course-tools-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--line-strong);
-  margin: 0 var(--space-1);
-}
-.install-state {
-  font-size: var(--size-sm);
+.rank {
+  width: 40px;
+  font-size: var(--size-lg);
   color: var(--text-2);
 }
-.install-state.current {
-  color: var(--good);
+.rank-1 {
+  color: var(--accent);
 }
-.install-state.outdated {
-  color: var(--warn);
+.time-cell {
+  font-size: var(--size-lg);
 }
 
 /* --- designer ---------------------------------------------------------------------------------- */
@@ -474,23 +769,19 @@
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
 }
 .designer-name {
-  font: inherit;
+  font-family: var(--font-display);
   font-size: var(--size-xl);
-  font-weight: 600;
-  color: var(--text-1);
+  font-weight: 700;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
   padding: 2px var(--space-2);
-  min-width: 0;
   flex: 1;
 }
-.designer-name:hover,
-.designer-name:focus {
+.designer-name:hover {
   border-color: var(--line-strong);
-  outline: none;
 }
 .designer-actions {
   display: flex;
@@ -515,6 +806,10 @@
   flex-direction: column;
   gap: var(--space-3);
   border-left: 1px solid var(--line);
+  background: var(--surface-0);
+}
+.designer-side .panel {
+  padding: var(--space-3) var(--space-4);
 }
 .designer-length,
 .designer-note {
@@ -523,7 +818,7 @@
 }
 .field {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 104px 1fr;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
@@ -539,18 +834,6 @@
 }
 .field input[type="number"] {
   width: 76px;
-}
-.field input,
-.field select,
-.field textarea {
-  font: inherit;
-  font-size: var(--size-sm);
-  color: var(--text-1);
-  background: var(--surface-0);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 3px var(--space-2);
-  min-width: 0;
 }
 .field textarea {
   resize: vertical;
@@ -572,6 +855,10 @@
   gap: var(--space-1);
   color: var(--text-2);
 }
+.designer-rules summary {
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+}
 .designer-gates ol {
   list-style: none;
   margin: var(--space-2) 0 0;
@@ -583,9 +870,13 @@
   padding: var(--space-1) var(--space-2);
   margin-bottom: var(--space-1);
   cursor: pointer;
+  background: var(--surface-1);
+}
+.gate-row:hover {
+  border-color: var(--line-strong);
 }
 .gate-row.selected {
-  border-color: var(--text-2);
+  border-color: var(--gate-color, var(--text-2));
   background: var(--surface-2);
   cursor: default;
 }
@@ -605,6 +896,13 @@
 .gate-row-tools button {
   padding: 0 6px;
   font-size: var(--size-xs);
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+}
+.gate-row-tools button:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
 }
 .gate-row-body {
   padding-bottom: var(--space-2);
@@ -620,7 +918,7 @@
   background: var(--gate-gate);
 }
 
-/* gate colors, shared by the list dots and the map */
+/* gate colors, shared by the list dots, the course sketches and the map */
 .type-start {
   --gate-color: var(--gate-start);
 }
@@ -661,16 +959,18 @@
   transform: translateX(-50%);
   z-index: 500;
   pointer-events: none;
-  background: var(--surface-1);
+  background: var(--surface-glass);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);
+  box-shadow: var(--shadow-pop);
 }
 .design-fit {
   position: absolute;
   bottom: var(--space-5);
   right: var(--space-3);
   z-index: 500;
+  background: var(--surface-glass);
 }
 .design-search {
   position: absolute;
@@ -681,22 +981,19 @@
 }
 .design-search input {
   width: 100%;
-  font: inherit;
-  font-size: var(--size-sm);
-  color: var(--text-1);
-  background: var(--surface-1);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
+  background: var(--surface-glass);
   padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-pop);
 }
 .design-search-list {
   list-style: none;
   margin: var(--space-1) 0 0;
   padding: var(--space-1);
-  background: var(--surface-1);
+  background: var(--surface-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   font-size: var(--size-sm);
+  box-shadow: var(--shadow-pop);
 }
 .design-search-list button {
   width: 100%;
@@ -766,16 +1063,6 @@
   font-family: var(--font-ui);
 }
 
-.designer-rules summary {
-  cursor: pointer;
-  margin-bottom: var(--space-2);
-}
-
-.toggle.on {
-  border-color: var(--good);
-  color: var(--good);
-}
-
 /* --- narrow window: pinned in a corner over the simulator ------------------------------------- */
 /* Only what is needed while flying: timer, next gate, minimap and flight values. */
 @media (max-width: 760px) {
@@ -783,12 +1070,14 @@
   .race-desc,
   .course-tools,
   .runs,
+  .ready,
   .brand,
   .pills {
     display: none;
   }
   .topbar {
     justify-content: flex-end;
+    height: auto;
     padding: var(--space-1) var(--space-2);
   }
   .race {
@@ -807,6 +1096,8 @@
 /* --- pinned on top of the simulator: only what is needed while flying ------------------------- */
 .app.pinned .courses,
 .app.pinned .race-title,
+.app.pinned .course-tools,
+.app.pinned .ready,
 .app.pinned .runs,
 .app.pinned .brand,
 .app.pinned .pills,
@@ -815,6 +1106,7 @@
 }
 .app.pinned .topbar {
   justify-content: flex-end;
+  height: auto;
   padding: var(--space-1) var(--space-2);
 }
 .app.pinned .race {
@@ -824,17 +1116,58 @@
 .app.pinned .race-head {
   justify-content: flex-end;
 }
+.app.pinned .race-main,
+.app.pinned .race-side {
+  padding: var(--space-3);
+}
 /* Smaller still: a compact race panel (time, deltas, next gate with its turn arrow) over the map.
  * Without a voice, the next gate is the only place that says where to go and what it asks for. */
 @media (max-width: 560px) {
   .app.pinned .race-main {
     gap: var(--space-1);
   }
-  .app.pinned .race-main > .label,
   .app.pinned .gate-strip {
     display: none;
   }
   .app.pinned .timer {
     font-size: calc(var(--size-timer) * 0.6);
   }
+  .app.pinned .next-gate {
+    padding: var(--space-2) var(--space-3);
+  }
+  .app.pinned .next-gate-name {
+    font-size: var(--size-lg);
+  }
+}
+
+/* Leaflet's own controls, in the app's colors. */
+.leaflet-bar a,
+.leaflet-bar a:hover,
+.leaflet-control-layers {
+  background: var(--surface-glass);
+  color: var(--text-1);
+  border-color: var(--line-strong) !important;
+}
+.leaflet-bar a:hover {
+  background: var(--surface-3);
+}
+.leaflet-bar,
+.leaflet-control-layers {
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+.leaflet-control-layers-expanded {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-1);
+}
+.leaflet-control-attribution {
+  background: var(--surface-glass) !important;
+  color: var(--text-2) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--text-1) !important;
+}
+.leaflet-control-layers-toggle {
+  filter: invert(1); /* Leaflet's icon is drawn for a light button */
 }

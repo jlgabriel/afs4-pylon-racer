@@ -47,6 +47,14 @@ scenery the app installs.
 of Pylon Racer, under the MIT License (`vendor/aerofly-reader/LICENSE.txt`). It is not part of the
 app: each release offers it as a separate download, `AeroflyReader.zip`, with that license.
 
+## Fonts (SIL Open Font License 1.1)
+
+The app bundles two typefaces, through the `@fontsource` packages, under the
+[SIL Open Font License 1.1](https://openfontlicense.org):
+
+- **Inter** — © 2016 The Inter Project Authors (https://github.com/rsms/inter).
+- **Barlow Semi Condensed** — © 2017 The Barlow Project Authors (https://github.com/jpt/barlow).
+
 ## Map data
 
 The course designer shows map tiles from **Esri World Imagery** (satellite) and **OpenStreetMap**

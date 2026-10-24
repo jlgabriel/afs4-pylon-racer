@@ -7,7 +7,7 @@
 // 2. No file path travels from the renderer into main. The renderer says WHAT (import a course),
 //    main decides WHERE through its own dialogs.
 // Adding a method = its type here + the preload + a handler in main/ipc.ts (channel "racer:<name>").
-import type { Course } from "../core/course/course";
+import type { Course, GateType } from "../core/course/course";
 import type { LiveState } from "../core/session/raceSession";
 import type { ClassChoices } from "../core/ranking/classes";
 import type { Run, SourceKind } from "../core/run/run";
@@ -36,6 +36,14 @@ export interface CourseSummary {
   runs: number;
   /** Whether its pylons are installed in AFS4, and from which revision of the course. */
   install: { state: "none" | "current" | "outdated"; folderName: string | null };
+  /** The gates in a unit square, north up, for the thumbnail in the course list (courseSketch). */
+  sketch: SketchPoint[];
+}
+
+export interface SketchPoint {
+  x: number;
+  y: number;
+  type: GateType;
 }
 
 export interface PlaceHit {

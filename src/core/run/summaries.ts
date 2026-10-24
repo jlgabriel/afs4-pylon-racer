@@ -2,7 +2,7 @@
 import { courseRevision, raceSequence, type Course } from "../course/course";
 import { planPoi } from "../export/poi";
 import { haversine } from "../geo/geo";
-import type { CourseSummary, RunSummary } from "../../shared/racerApi";
+import type { CourseSummary, RunSummary, SketchPoint } from "../../shared/racerApi";
 import type { Run } from "./run";
 
 export function summarizeRun(r: Run): RunSummary {
@@ -59,7 +59,24 @@ export function summarizeCourse(c: Course, runs: readonly RunSummary[], installe
     lapLengthM: lapLength(c),
     bestTotal: finished.length > 0 ? Math.min(...finished) : null,
     runs: mine.length,
+    sketch: courseSketch(c),
   };
+}
+
+/** The gate centers fitted into a unit square, north up, keeping the course's proportions and
+ *  centered on the short side. Enough to draw a thumbnail of the route. */
+export function courseSketch(c: Pick<Course, "gates">): SketchPoint[] {
+  if (c.gates.length === 0) return [];
+  const lat0 = (c.gates.reduce((s, g) => s + g.center.lat, 0) / c.gates.length) * (Math.PI / 180);
+  const pts = c.gates.map((g) => ({ x: g.center.lon * Math.cos(lat0), y: -g.center.lat }));
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  const [x0, y0] = [Math.min(...xs), Math.min(...ys)];
+  const span = Math.max(Math.max(...xs) - x0, Math.max(...ys) - y0) || 1;
+  const dx = (1 - (Math.max(...xs) - x0) / span) / 2;
+  const dy = (1 - (Math.max(...ys) - y0) / span) / 2;
+  const r = (v: number): number => Math.round(v * 1000) / 1000;
+  return c.gates.map((g, i) => ({ x: r((pts[i]!.x - x0) / span + dx), y: r((pts[i]!.y - y0) / span + dy), type: g.type }));
 }
 
 /** The installed pylons match the course: same revision and, when the folder says, the same pylons

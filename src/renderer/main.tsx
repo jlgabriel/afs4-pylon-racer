@@ -3,6 +3,11 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { installMockBridge } from "./dev/mockBridge";
 import "leaflet/dist/leaflet.css";
+// Bundled fonts (OFL-1.1, see THIRD_PARTY_NOTICES.md): nothing is fetched at run time.
+import "@fontsource-variable/inter";
+import "@fontsource/barlow-semi-condensed/latin-600.css";
+import "@fontsource/barlow-semi-condensed/latin-700.css";
+import "@fontsource/barlow-semi-condensed/latin-700-italic.css";
 import "./theme/tokens.css";
 import "./theme/base.css";
 import "./app.css";

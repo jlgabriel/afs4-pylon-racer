@@ -13,6 +13,7 @@ files:
   - package.json
   - LICENSE
   - THIRD_PARTY_NOTICES.md
+  - resources/icon.png # the window icon (main imports it with ?asset)
   - "!**/*.map"
 
 # The pylon models (MIT, see THIRD_PARTY_NOTICES.md), copied into each installed course scenery.
@@ -28,6 +29,7 @@ fileAssociations:
     name: Pylon Racer course
     description: Pylon Racer course
     role: Viewer
+    icon: pylonrace # resources/pylonrace.ico and .icns (npm run icons)
 
 asar: true
 # No native modules → nothing to rebuild against Electron's ABI.

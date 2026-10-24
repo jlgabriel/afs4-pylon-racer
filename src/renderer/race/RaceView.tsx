@@ -1,13 +1,14 @@
 // The race screen: timer, deltas, gate strip, next gate, map, flight values, result and the runs of
 // this course. Everything shown comes from main's live updates; nothing here judges the race.
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { Course, Gate, GateType } from "../../core/course/course";
 import { relativeBearing } from "../../core/geo/geo";
 import type { Fix } from "../../core/race/fix";
 import type { Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
 import { passDelta } from "../../core/run/delta";
+import { lapLength } from "../../core/run/summaries";
 import type { Run } from "../../core/run/run";
-import { classLabel } from "../../core/ranking/classes";
+import { classLabel, resolveClass } from "../../core/ranking/classes";
 import { classesOf, currentClass, isDemo, leaderboard, pilotRuns } from "../../core/ranking/ranking";
 import type { LiveState } from "../../core/session/raceSession";
 import type { RunSummary, TelemetryStatus } from "../../shared/racerApi";
@@ -24,6 +25,9 @@ const GATE_NAME: Record<GateType, string> = {
   knife: "Knife-edge gate",
   turn: "Turn pylon",
 };
+
+/** The README's section on connecting AFS4 (opens in the browser). */
+const HELP_CONNECT = "https://github.com/jlgabriel/afs4-pylon-racer#connecting-to-aerofly-fs-4";
 
 /** Penalties that mean the gate itself was not flown; the others are about HOW it was flown. */
 const GATE_LOST: ReadonlySet<PenaltyKind> = new Set(["missed-gate"]);
@@ -48,20 +52,22 @@ export function RaceView() {
 
   const demoRunning = update?.telemetry.demo.running ?? false;
   const nextGateIndex = live?.nextGate?.index ?? null;
+  const nextGate = nextGateIndex !== null ? course.gates[nextGateIndex]! : null;
   const lastPass = race && race.passes.length > 0 ? race.passes[race.passes.length - 1]! : null;
   const lastDelta = race && lastPass && targetRun ? passDelta(lastPass, race.penalties, targetRun) : null;
+  const over = race?.status === "finished" || race?.status === "dnf";
 
   return (
     <main className="race">
       <header className="race-head">
         <div className="race-title">
-          <h1>{course.name}</h1>
-          <div className="muted">
-            {course.gates.length} gates{course.laps > 1 ? ` · ${course.laps} laps` : ""}
+          <h1 className="display">{course.name}</h1>
+          <div className="race-meta">
+            {course.gates.length} gates · {fmtDistance(lapLength(course) * course.laps)}
+            {course.laps > 1 ? ` · ${course.laps} laps` : ""}
             {course.author ? ` · by ${course.author}` : ""}
           </div>
-          {course.description && <div className="muted race-desc">{course.description}</div>}
-          <CourseTools />
+          {course.description && <p className="race-desc">{course.description}</p>}
         </div>
         <div className="race-actions">
           {demoRunning ? (
@@ -71,21 +77,21 @@ export function RaceView() {
               Watch demo
             </button>
           )}
-          <button className="primary" onClick={() => void resetRace()}>
+          <button className="primary" onClick={() => void resetRace()} title="Arm a new attempt: it starts when you fly through the start gate">
             Race again
           </button>
         </div>
       </header>
+      <CourseTools />
 
       <div className="race-grid">
-        <section className="panel race-main">
+        <section className={`panel race-main status-${race?.status ?? "none"}`}>
           <StatusLine race={race} telemetry={update?.telemetry ?? null} />
-          <div className="label">Race time</div>
-          <div className="timer num">{fmtTime(race?.total ?? 0)}</div>
+          <div className="timer display">{fmtTime(race?.total ?? 0)}</div>
           <div className="deltas">
             {race && race.penaltyTotal > 0 && <span className="bad num">incl. +{race.penaltyTotal.toFixed(1)} s penalties</span>}
             {lastDelta !== null && (
-              <span className={`num ${lastDelta < 0 ? "good" : "bad"}`}>
+              <span className={`num delta ${lastDelta < 0 ? "good" : "bad"}`}>
                 {fmtDelta(lastDelta)} vs best at gate {lastPass!.gateIndex + 1}
               </span>
             )}
@@ -99,28 +105,28 @@ export function RaceView() {
           <GateStrip race={race} />
           {race?.status === "running" && race.penalties.length > 0 && <PenaltyList penalties={race.penalties} course={course} />}
 
-          {nextGateIndex !== null && live?.nextGate && (
-            <div className="next-gate">
+          {nextGate && live?.nextGate && !over && (
+            <div className={`next-gate type-${nextGate.type}`}>
               <div className="label">Next{race?.status === "waiting" ? " · fly through the start to begin" : ""}</div>
               <div className="next-gate-name">
-                {nextGateIndex + 1} · {GATE_NAME[course.gates[nextGateIndex]!.type]}
+                {nextGateIndex! + 1} · {GATE_NAME[nextGate.type]}
                 {race && race.laps > 1 && race.status === "running" && <span className="muted"> · lap {race.lap} of {race.laps}</span>}
               </div>
-              {gateRequirements(course.gates[nextGateIndex]!, course).length > 0 && (
-                <div className="next-gate-needs">{gateRequirements(course.gates[nextGateIndex]!, course).join(" · ")}</div>
-              )}
+              {gateRequirements(nextGate, course).length > 0 && <div className="next-gate-needs">{gateRequirements(nextGate, course).join(" · ")}</div>}
               <div className="next-gate-where">
-                <span className="num muted">{fmtDistance(live.nextGate.distanceM)}</span>
-                {live.fix && <TurnCue fix={live.fix} gate={course.gates[nextGateIndex]!} />}
+                <span className="num next-gate-dist">{fmtDistance(live.nextGate.distanceM)}</span>
+                {live.fix && <TurnCue fix={live.fix} gate={nextGate} />}
               </div>
             </div>
           )}
 
-          {race && (race.status === "finished" || race.status === "dnf") && <Result race={race} target={targetRun} course={course} demo={live?.demo ?? false} />}
+          {(!race || race.status === "waiting") && <ReadyList course={course} telemetry={update?.telemetry ?? null} />}
+
+          {race && over && <Result race={race} target={targetRun} course={course} demo={live?.demo ?? false} />}
         </section>
 
         <section className="panel race-side">
-          <MiniMap course={course} nextGate={nextGateIndex} passed={passed} fix={live?.fix ?? null} trail={trail} />
+          <MiniMap course={course} nextGate={over ? null : nextGateIndex} passed={passed} fix={live?.fix ?? null} trail={trail} />
           <FlightValues live={live} course={course} />
         </section>
       </div>
@@ -143,21 +149,94 @@ function CourseTools() {
   const state = summary?.install.state ?? "none";
   return (
     <div className="course-tools">
-      <button onClick={edit}>Edit</button>
-      <button onClick={() => void duplicate()}>Duplicate</button>
-      <button onClick={() => void share()} title="Save this course as a .pylonrace file to send to other pilots">
-        Share…
-      </button>
-      <button onClick={() => void remove()}>Delete</button>
-      <span className="course-tools-sep" />
-      <span className={`install-state ${state}`}>
-        {state === "current" ? "Pylons in AFS4" : state === "outdated" ? "Pylons in AFS4 are out of date" : "Pylons not in AFS4"}
-      </span>
-      <button disabled={busy} onClick={() => void install()}>
-        {state === "none" ? "Install pylons" : "Reinstall"}
-      </button>
-      {state !== "none" && <button onClick={() => void uninstall()}>Remove</button>}
+      <div className="course-tools-group">
+        <button className="ghost" onClick={edit}>
+          Edit
+        </button>
+        <button className="ghost" onClick={() => void duplicate()}>
+          Duplicate
+        </button>
+        <button className="ghost" onClick={() => void share()} title="Save this course as a .pylonrace file to send to other pilots">
+          Share…
+        </button>
+        <button className="ghost danger" onClick={() => void remove()}>
+          Delete
+        </button>
+      </div>
+      <div className="course-tools-group">
+        <span className={`install-state ${state}`}>
+          <span className="dot" aria-hidden />
+          {state === "current" ? "Pylons in AFS4" : state === "outdated" ? "Pylons in AFS4 are out of date" : "Pylons not in AFS4"}
+        </span>
+        <button className={state === "current" ? undefined : "primary"} disabled={busy} onClick={() => void install()}>
+          {state === "none" ? "Install pylons" : "Reinstall"}
+        </button>
+        {state !== "none" && (
+          <button className="ghost" onClick={() => void uninstall()}>
+            Remove
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Before the start: what is ready and what is still missing to race this course. */
+function ReadyList({ course, telemetry: t }: { course: Course; telemetry: TelemetryStatus | null }) {
+  const summary = useStore((s) => s.courses.find((c) => c.id === course.id));
+  const choices = useStore((s) => s.app?.classChoices);
+  const install = summary?.install.state ?? "none";
+  const start = course.gates[0];
+  const cls = t?.active && choices ? resolveClass(t.aircraft, choices) : null;
+  const source = !t?.active
+    ? null
+    : t.active === "demo"
+      ? "demo flight"
+      : t.active === "reader"
+        ? `AeroflyReader, ${Math.round(t.reader.hz)} Hz`
+        : `UDP broadcast, ${Math.round(t.udp.hz)} Hz`;
+  return (
+    <ul className="ready" aria-label="Before the start">
+      <ReadyItem state={source ? "ok" : "missing"} label="Flight data">
+        {source ?? (
+          <>
+            waiting for Aerofly FS 4: turn on its UDP broadcast (port 49002) or install AeroflyReader.dll.{" "}
+            <a href={HELP_CONNECT} target="_blank" rel="noreferrer">
+              How?
+            </a>
+          </>
+        )}
+      </ReadyItem>
+      <ReadyItem state={install === "current" ? "ok" : "missing"} label="Pylons">
+        {install === "current"
+          ? "installed in Aerofly FS 4"
+          : install === "outdated"
+            ? "out of date in Aerofly FS 4: reinstall them, then restart the sim"
+            : "not installed yet: the gates count anyway, but you won't see them. Install them, then restart the sim"}
+      </ReadyItem>
+      {t?.active && (
+        <ReadyItem state={cls !== null ? "ok" : "missing"} label="Class">
+          {cls !== null ? `${t.aircraft ?? "your aircraft"} · ${classLabel(cls)}` : "choose your aircraft's class in the top bar to rank your runs"}
+        </ReadyItem>
+      )}
+      {start && (
+        <ReadyItem state="todo" label="Start">
+          fly through gate 1 heading {String(Math.round(start.headingDeg)).padStart(3, "0")}°: the clock starts there
+        </ReadyItem>
+      )}
+    </ul>
+  );
+}
+
+function ReadyItem({ state, label, children }: { state: "ok" | "missing" | "todo"; label: string; children: ReactNode }) {
+  return (
+    <li className={`ready-item ${state}`}>
+      <span className="ready-mark" aria-hidden>
+        {state === "ok" ? "✓" : state === "todo" ? "›" : "!"}
+      </span>
+      <span className="ready-label">{label}</span>
+      <span className="ready-text">{children}</span>
+    </li>
   );
 }
 
@@ -187,7 +266,12 @@ function StatusLine({ race, telemetry }: { race: RaceSnapshot | null; telemetry:
           : race?.status === "running"
             ? "Racing"
             : "Armed — fly through the start gate";
-  return <div className={`status-line status-${race?.status ?? "none"}`}>{text}</div>;
+  return (
+    <div className={`status-line status-${race?.status ?? "none"} ${telemetry?.active ? "live" : ""}`}>
+      <span className="status-dot" aria-hidden />
+      {text}
+    </div>
+  );
 }
 
 function GateStrip({ race }: { race: RaceSnapshot | null }) {
@@ -216,7 +300,7 @@ function Result({ race, target, course, demo }: { race: RaceSnapshot; target: Ru
   const newBest = !demo && race.status === "finished" && (!target || race.total < target.result.total);
   const why = race.status === "dnf" ? dnfText(race) : null;
   return (
-    <div className="result">
+    <div className={`result ${race.status === "dnf" ? "dnf" : newBest ? "new-best" : ""}`}>
       {race.status === "dnf" ? (
         <div className="result-title bad">Did not finish{why ? ` · ${why}` : ""}</div>
       ) : demo ? (
@@ -225,7 +309,7 @@ function Result({ race, target, course, demo }: { race: RaceSnapshot; target: Ru
           {target && <span className="num"> {fmtDelta(race.total - target.result.total)}</span>}
         </div>
       ) : newBest ? (
-        <div className="result-title best">New best</div>
+        <div className="result-title best">New best!</div>
       ) : (
         <div className="result-title">
           Finished <span className="bad num">{fmtDelta(race.total - target!.result.total)}</span>
@@ -243,8 +327,8 @@ function Result({ race, target, course, demo }: { race: RaceSnapshot; target: Ru
             <span className="good">+0.0 s</span>
           </>
         )}
-        <span className="muted">Total</span>
-        <span>{fmtTime(race.total)}</span>
+        <span className="result-total-label">Total</span>
+        <span className="result-total display">{fmtTime(race.total)}</span>
       </div>
       {race.laps > 1 && (
         <div className="muted num laps">
@@ -295,7 +379,7 @@ function Value({ label, value, unit }: { label: string; value: number | null; un
   return (
     <div className="value">
       <div className="label">{label}</div>
-      <div className="num value-n">
+      <div className="display value-n">
         {value ?? "—"}
         <span className="muted value-u"> {unit}</span>
       </div>
@@ -356,9 +440,9 @@ function Rankings() {
           <tbody>
             {board.map((r, i) => (
               <tr key={r.id} className={r.pilot === pilot ? "me" : undefined}>
-                <td>{i + 1}</td>
-                <td>{r.pilot}</td>
-                <td>{fmtTime(r.total)}</td>
+                <td className={`rank display rank-${i + 1}`}>{i + 1}</td>
+                <td className="pilot-cell">{r.pilot}</td>
+                <td className="display time-cell">{fmtTime(r.total)}</td>
                 <td>{penaltyCell(r)}</td>
                 <td>{r.aircraftId ?? "—"}</td>
                 <td>{sourceCell(r)}</td>

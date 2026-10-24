@@ -10,6 +10,7 @@ import { mayNavigate } from "./navigation";
 import { RaceController } from "./race";
 import { Storage } from "./storage";
 import { TelemetryHub } from "./telemetry";
+import icon from "../../resources/icon.png?asset";
 
 declare const __APP_VERSION__: string;
 
@@ -32,7 +33,7 @@ process.on("unhandledRejection", fatal("unhandled promise rejection in main"));
 // for the designer's map tiles; every other fetch goes through main.
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  "img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 // One instance: a second launch (double-clicking a .pylonrace while the app runs) hands its files to
 // the first and quits. Two instances would also fight over the telemetry ports.
@@ -69,7 +70,8 @@ function createWindow(): void {
     minHeight: 320,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: "#111114",
+    backgroundColor: "#0b0e16", // --surface-0, so the window does not flash another color on load
+    icon, // the taskbar and window icon in dev and on Linux; packaged Windows and macOS use the bundle's
     title: `Pylon Racer ${__APP_VERSION__}`,
     webPreferences: {
       preload: join(import.meta.dirname, "../preload/index.cjs"),

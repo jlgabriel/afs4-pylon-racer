@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AIRCRAFT_CLASSES, classLabel, classOfAircraft, resolveClass } from "../core/ranking/classes";
-import type { TelemetryStatus } from "../shared/racerApi";
+import type { SketchPoint, TelemetryStatus } from "../shared/racerApi";
 import { fmtDistance, fmtTime } from "./app/format";
+import { LogoMark } from "./app/Logo";
 import { Designer } from "./design/Designer";
 import { RaceView } from "./race/RaceView";
 import { useStore } from "./state/store";
@@ -100,7 +101,9 @@ function TopBar() {
   return (
     <header className="topbar">
       <div className="brand">
-        Pylon Racer <span className="muted num">{app?.version ?? __APP_VERSION__}</span>
+        <LogoMark size={26} />
+        <span className="brand-name">Pylon Racer</span>
+        <span className="brand-version num">{app?.version ?? __APP_VERSION__}</span>
       </div>
       <div className="topbar-right">
         <TelemetryPills t={telemetry} />
@@ -161,8 +164,20 @@ function PilotMenu() {
   if (!app) return null;
   return (
     <div className="pilot" ref={box}>
-      <button aria-haspopup="menu" aria-expanded={open} title="Who is flying: switch pilots or add one" onClick={() => (open ? close() : setOpen(true))}>
-        {app.pilot} ▾
+      <button
+        className="pilot-button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Who is flying: switch pilots or add one"
+        onClick={() => (open ? close() : setOpen(true))}
+      >
+        <span className="pilot-avatar" aria-hidden>
+          {app.pilot.slice(0, 1).toUpperCase()}
+        </span>
+        {app.pilot}
+        <span className="pilot-caret" aria-hidden>
+          ▾
+        </span>
       </button>
       {open && (
         <div className="pilot-menu" role="menu">
@@ -278,7 +293,9 @@ function CourseList() {
       <div className="courses-head">
         <span className="label">Courses</span>
         <span className="courses-tools">
-          <button onClick={newCourse}>New</button>
+          <button onClick={newCourse} title="Design a new course">
+            + New
+          </button>
           <button
             onClick={() => void importFiles()}
             title="Import courses (.pylonrace) from other pilots, or the old pylon-race course.json. You can also drop the files on the window."
@@ -291,23 +308,49 @@ function CourseList() {
         {courses.map((c) => (
           <li key={c.id}>
             <button className={`course ${selected?.id === c.id ? "active" : ""}`} onClick={() => void select(c.id)}>
-              <span className="course-name">{c.name}</span>
-              <span className="muted course-meta num">
-                {c.gates} gates · {fmtDistance(c.lapLengthM * c.laps)}
-                {c.laps > 1 ? ` · ${c.laps} laps` : ""}
-              </span>
-              <span className="course-best num">
-                {c.bestTotal !== null ? `Best ${fmtTime(c.bestTotal)}` : "No runs yet"}
-                {c.install.state !== "none" && (
-                  <span className={c.install.state === "current" ? "good" : "warn"}>
-                    {c.install.state === "current" ? " · in AFS4" : " · reinstall"}
-                  </span>
-                )}
+              <CourseSketch points={c.sketch} closed={c.laps > 1} />
+              <span className="course-text">
+                <span className="course-name">{c.name}</span>
+                <span className="course-meta num">
+                  {c.gates} gates · {fmtDistance(c.lapLengthM * c.laps)}
+                  {c.laps > 1 ? ` · ${c.laps} laps` : ""}
+                </span>
+                <span className="course-foot">
+                  {c.bestTotal !== null ? (
+                    <span className="course-best display">{fmtTime(c.bestTotal)}</span>
+                  ) : (
+                    <span className="course-nobest">No runs yet</span>
+                  )}
+                  {c.install.state !== "none" && (
+                    <span
+                      className={`chip ${c.install.state === "current" ? "good" : "warn"}`}
+                      title={c.install.state === "current" ? "Its pylons are installed in Aerofly FS 4" : "The pylons in Aerofly FS 4 are from an older version of this course"}
+                    >
+                      {c.install.state === "current" ? "In AFS4" : "Reinstall"}
+                    </span>
+                  )}
+                </span>
               </span>
             </button>
           </li>
         ))}
       </ul>
     </nav>
+  );
+}
+
+/** A thumbnail of the route: the gates in order, colored by kind. */
+function CourseSketch({ points, closed }: { points: SketchPoint[]; closed: boolean }) {
+  const S = 44;
+  const P = 5;
+  const xy = points.map((p) => [P + p.x * (S - 2 * P), P + p.y * (S - 2 * P)] as const);
+  const path = xy.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ") + (closed ? " Z" : "");
+  return (
+    <svg className="course-sketch" width={S} height={S} viewBox={`0 0 ${S} ${S}`} aria-hidden>
+      <path d={path} />
+      {xy.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i === 0 ? 3 : 2.2} className={`type-${points[i]!.type}`} />
+      ))}
+    </svg>
   );
 }
