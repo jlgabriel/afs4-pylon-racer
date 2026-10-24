@@ -21,16 +21,12 @@ extraResources:
   - from: assets
     to: assets
 
-# Double-clicking a shared course or run opens it in the app (main/index.ts imports it). On macOS
+# Double-clicking a shared course opens it in the app (main/index.ts imports it). On macOS
 # this becomes CFBundleDocumentTypes; on Windows the NSIS installer registers the extensions.
 fileAssociations:
   - ext: pylonrace
     name: Pylon Racer course
     description: Pylon Racer course
-    role: Viewer
-  - ext: pylonrun
-    name: Pylon Racer run
-    description: Pylon Racer run
     role: Viewer
 
 asar: true

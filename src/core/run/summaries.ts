@@ -4,11 +4,9 @@ import { haversine } from "../geo/geo";
 import type { CourseSummary, RunSummary } from "../../shared/racerApi";
 import type { Run } from "./run";
 
-/** `imported`: the run came from a .pylonrun (another pilot's, or one of ours shared back). */
-export function summarizeRun(r: Run, imported = false): RunSummary {
+export function summarizeRun(r: Run): RunSummary {
   return {
     id: r.id,
-    imported,
     courseId: r.courseId,
     courseRevision: r.courseRevision,
     status: r.result.status,
@@ -43,7 +41,7 @@ export interface InstalledRef {
 export function summarizeCourse(c: Course, runs: readonly RunSummary[], installed: readonly InstalledRef[] = []): CourseSummary {
   const revision = courseRevision(c);
   const mine = runs.filter((r) => r.courseId === c.id && r.courseRevision === revision);
-  const finished = mine.filter((r) => r.status === "finished" && !r.imported).map((r) => r.total);
+  const finished = mine.filter((r) => r.status === "finished").map((r) => r.total);
   const poi = installed.find((p) => p.courseId === c.id);
   return {
     install: poi

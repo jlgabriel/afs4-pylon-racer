@@ -3,7 +3,7 @@ import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { sampleCourses } from "../src/core/demo/sampleCourses";
 import { demoFlight } from "../src/core/demo/demoFlight";
-import { courseFileName, packCourse, packRun, runFileName, ShareFileError, unpack } from "../src/core/files/share";
+import { courseFileName, packCourse, ShareFileError, unpack } from "../src/core/files/share";
 import { crc32, isZip, readZip, writeZip, ZipError, type ZipCodec } from "../src/core/files/zip";
 import type { Run } from "../src/core/run/run";
 import { RaceSession } from "../src/core/session/raceSession";
@@ -63,35 +63,35 @@ describe("zip", () => {
 
 describe("exchange files", () => {
   it("a .pylonrace carries the course unchanged", () => {
-    const back = unpack(packCourse(daggett, codec), codec, NOW);
-    expect(back).toEqual({ kind: "course", course: daggett });
+    expect(unpack(packCourse(daggett, codec), codec, NOW)).toEqual(daggett);
   });
 
-  it("a .pylonrun carries the run and, when given, its course", () => {
-    const run = flownRun();
-    expect(unpack(packRun(run, daggett, codec), codec, NOW)).toEqual({ kind: "run", run, course: daggett });
-    expect(unpack(packRun(run, null, codec), codec, NOW)).toEqual({ kind: "run", run, course: null });
-  });
-
-  it("takes bare JSON too: a native course, a run, the old tool's course.json", () => {
-    expect(unpack(enc.encode(JSON.stringify(daggett)), codec, NOW)).toEqual({ kind: "course", course: daggett });
-    const run = flownRun();
-    expect(unpack(enc.encode("﻿" + JSON.stringify(run)), codec, NOW)).toEqual({ kind: "run", run, course: null });
+  it("takes bare JSON too: a native course, the old tool's course.json", () => {
+    expect(unpack(enc.encode("﻿" + JSON.stringify(daggett)), codec, NOW)).toEqual(daggett);
     const rct = readFileSync(new URL("fixtures/munich_multicolor.json", import.meta.url));
-    const r = unpack(new Uint8Array(rct), codec, NOW);
-    expect(r.kind === "course" && r.course.gates.length).toBeGreaterThan(2);
+    expect(unpack(new Uint8Array(rct), codec, NOW).gates.length).toBeGreaterThan(2);
+  });
+
+  it("refuses runs, as a v0.4.0-pre .pylonrun or as bare JSON", () => {
+    const run = flownRun();
+    const pylonrun = writeZip(
+      [
+        { name: "run.json", data: enc.encode(JSON.stringify(run)) },
+        { name: "course.json", data: enc.encode(JSON.stringify(daggett)) },
+      ],
+      codec,
+    );
+    expect(() => unpack(pylonrun, codec, NOW)).toThrow(/shares courses, not runs/);
+    expect(() => unpack(enc.encode(JSON.stringify(run)), codec, NOW)).toThrow(/shares courses, not runs/);
   });
 
   it("says plainly when a file is not one of ours", () => {
     expect(() => unpack(enc.encode("hello"), codec, NOW)).toThrow(ShareFileError);
-    expect(() => unpack(writeZip([{ name: "readme.txt", data: enc.encode("hi") }], codec), codec, NOW)).toThrow(/no course or run/);
+    expect(() => unpack(writeZip([{ name: "readme.txt", data: enc.encode("hi") }], codec), codec, NOW)).toThrow(/no course in it/);
     expect(() => unpack(enc.encode(JSON.stringify({ format: "pylon-racer/course", version: 1 })), codec, NOW)).toThrow();
   });
 
-  it("names files after the course, the pilot and the time", () => {
+  it("names the file after the course", () => {
     expect(courseFileName({ name: "KDAG: Rules/Test?" })).toBe("KDAG Rules Test.pylonrace");
-    const run = flownRun();
-    expect(runFileName(run)).toBe(`Daggett Sprint - Juan ${run.result.total.toFixed(2)}.pylonrun`);
-    expect(runFileName({ ...run, pilot: "..", result: { ...run.result, status: "dnf" } })).toBe("Daggett Sprint - pilot DNF.pylonrun");
   });
 });

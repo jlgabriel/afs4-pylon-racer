@@ -6,15 +6,14 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { ZodError } from "zod";
 import { parseCourse, type Course } from "../core/course/course";
-import { COURSE_EXT, courseFileName, IMPORT_EXTS, RUN_EXT, runFileName } from "../core/files/share";
-import type { Run } from "../core/run/run";
+import { COURSE_EXT, courseFileName, IMPORT_EXTS } from "../core/files/share";
 import { rankRuns, summarizeCourse } from "../core/run/summaries";
 import type { AppInfo, CourseSummary, DroppedFile, ImportReport, Prefs, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
 import { writeFileAtomic } from "./fsAtomic";
 import { Afs4NotFoundError, type Installer } from "./installer";
 import { log } from "./log";
 import type { RaceController } from "./race";
-import { courseFile, importFiles, MAX_IMPORT_BYTES, runFile } from "./sharing";
+import { courseFile, importFiles, MAX_IMPORT_BYTES } from "./sharing";
 import { SAFE_ID, type Storage } from "./storage";
 import { elevations, searchPlaces } from "./web";
 
@@ -36,7 +35,7 @@ export interface IpcDeps {
 }
 
 export interface IpcHandle {
-  /** Files the OS asked us to open (a double-clicked .pylonrace or .pylonrun): imported and pushed
+  /** Files the OS asked us to open (a double-clicked .pylonrace): imported and pushed
    *  to the renderer, or held until the renderer takes them at startup. */
   openFiles(paths: readonly string[]): void;
 }
@@ -72,14 +71,6 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
       return await fn(found.value);
     } catch (e) {
       return fail("io", errorText(e));
-    }
-  };
-  const readRun = (id: string): Run | null => {
-    try {
-      return storage.getRun(id);
-    } catch (e) {
-      log.warn(`unreadable run ${id}`, e);
-      return null;
     }
   };
   const saveDialog = async (sender: WebContents, title: string, fileName: string, ext: string, kind: string) => {
@@ -169,7 +160,7 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
 
   ipcMain.handle("racer:importFiles", async (e): Promise<RacerResult<ImportReport>> => {
     const opts: OpenDialogOptions = {
-      title: "Import courses and runs",
+      title: "Import courses",
       filters: [
         { name: "Pylon Racer files", extensions: [...IMPORT_EXTS] },
         { name: "All files", extensions: ["*"] },
@@ -316,21 +307,6 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
   ipcMain.handle("racer:stopDemo", () => race.stopDemo());
 
   ipcMain.handle("racer:listRuns", (_e, courseId: unknown) => rankRuns(storage.listRuns().filter((r) => r.courseId === courseId)));
-
-  ipcMain.handle("racer:exportRun", async (e, id: unknown) => {
-    const run = typeof id === "string" ? readRun(id) : null;
-    if (!run) return fail("not-found", "No such run");
-    const file = await saveDialog(e.sender, "Share run", runFileName(run), RUN_EXT, "Pylon Racer run");
-    if (!file) return fail("cancelled", "Export cancelled");
-    try {
-      const { data, withCourse } = runFile(storage, run);
-      writeFileAtomic(file, data);
-      log.info(`run exported: ${run.id} to ${file}${withCourse ? " with its course" : ""}`);
-      return ok({ fileName: path.basename(file), withCourse });
-    } catch (err) {
-      return fail("io", errorText(err));
-    }
-  });
 
   ipcMain.handle("racer:getRun", (_e, id: unknown) => {
     if (typeof id !== "string") return fail("not-found", "No run id");

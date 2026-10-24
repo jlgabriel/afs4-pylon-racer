@@ -39,7 +39,7 @@ const CSP =
 const firstInstance = app.requestSingleInstanceLock();
 if (!firstInstance) app.quit();
 
-const OPENABLE = /\.(pylonrace|pylonrun)$/i;
+const OPENABLE = /\.pylonrace$/i;
 /** Exchange files on a command line (Windows and Linux pass the double-clicked file as an argument). */
 const filesIn = (argv: readonly string[]): string[] => argv.slice(1).filter((a) => OPENABLE.test(a) && existsSync(a));
 let ipc: IpcHandle | null = null;

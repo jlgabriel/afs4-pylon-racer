@@ -1,6 +1,6 @@
-// A minimal ZIP reader and writer for the app's own exchange files (.pylonrace, .pylonrun): a few
-// small JSON entries, so no ZIP64, no encryption, no multi-disk. Pure — the deflate codec is passed
-// in (node:zlib in main and the tests), so this module carries no Node or browser dependency.
+// A minimal ZIP reader and writer for the app's own exchange file (.pylonrace): a few small JSON
+// entries, so no ZIP64, no encryption, no multi-disk. Pure — the deflate codec is passed in
+// (node:zlib in main and the tests), so this module carries no Node or browser dependency.
 //
 // Reading is defensive: these files come from other people. Entries are only ever looked up by
 // exact name and kept in memory (never written to disk by name, so no path traversal), every size

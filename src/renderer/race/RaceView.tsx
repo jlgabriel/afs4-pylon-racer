@@ -299,12 +299,10 @@ function Value({ label, value, unit }: { label: string; value: number | null; un
 }
 
 function Runs({ runs }: { runs: RunSummary[] }) {
-  const share = useStore((s) => s.exportRun);
   if (runs.length === 0) return <section className="panel runs muted">No runs on this course yet.</section>;
-  const others = runs.some((r) => r.imported);
   return (
     <section className="panel runs">
-      <div className="label">{others ? "Runs on this course" : "Your runs on this course"}</div>
+      <div className="label">Runs on this course</div>
       <table className="num">
         <thead>
           <tr>
@@ -316,7 +314,6 @@ function Runs({ runs }: { runs: RunSummary[] }) {
             <th>Class</th>
             <th>Source</th>
             <th>Date</th>
-            <th />
           </tr>
         </thead>
         <tbody>
@@ -328,21 +325,13 @@ function Runs({ runs }: { runs: RunSummary[] }) {
                 {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}
               </td>
               <td>{r.penaltyTotal > 0 ? `+${r.penaltyTotal.toFixed(1)}` : "—"}</td>
-              <td title={r.imported ? "Imported from a .pylonrun file" : "Flown here"}>
-                {r.pilot}
-                {r.imported && <span className="muted"> · imported</span>}
-              </td>
+              <td>{r.pilot}</td>
               <td>{r.aircraftId ?? "—"}</td>
               <td>{classLabel(r.classId)}</td>
               <td>
                 {r.source} {r.sourceHz ? `${Math.round(r.sourceHz)} Hz` : ""}
               </td>
               <td>{new Date(r.startedAt).toLocaleString()}</td>
-              <td>
-                <button className="small" onClick={() => void share(r.id)} title="Save this run as a .pylonrun file to send to other pilots">
-                  Share…
-                </button>
-              </td>
             </tr>
           ))}
         </tbody>

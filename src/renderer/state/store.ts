@@ -24,7 +24,7 @@ interface State {
   courses: CourseSummary[];
   selected: Course | null;
   runs: RunSummary[];
-  /** Your best finished run of the selected course revision (imported runs aside). */
+  /** The best finished run of the selected course revision. */
   bestRun: Run | null;
   /** The best run as it was when the current attempt was armed: what this attempt races against.
    *  It stays put when the attempt itself becomes the new best, so it is never compared to itself. */
@@ -49,7 +49,6 @@ interface State {
   /** Files dropped on the window. */
   importDropped(files: readonly File[]): Promise<void>;
   exportCourse(): Promise<void>;
-  exportRun(id: string): Promise<void>;
   resetRace(): Promise<void>;
   startDemo(): Promise<void>;
   stopDemo(): Promise<void>;
@@ -83,7 +82,7 @@ export const useStore = create<State>((set, get) => {
     }
     const revision = courseRevision(course);
     const runs = (await racer.listRuns(course.id)).filter((r) => r.courseRevision === revision);
-    const best = runs.find((r) => r.status === "finished" && !r.imported);
+    const best = runs.find((r) => r.status === "finished");
     const bestRun = best ? await racer.getRun(best.id) : null;
     const value = bestRun?.ok ? bestRun.value : null;
     set(arm ? { courses, runs, bestRun: value, targetRun: value } : { courses, runs, bestRun: value });
@@ -191,18 +190,6 @@ export const useStore = create<State>((set, get) => {
         return;
       }
       set({ message: { kind: "info", text: `Saved ${r.value}. Send it to other pilots: they open it with Import… or drop it on Pylon Racer.` } });
-    },
-
-    async exportRun(id) {
-      const racer = getRacer();
-      if (!racer) return;
-      const r = await racer.exportRun(id);
-      if (!r.ok) {
-        if (r.error.code !== "cancelled") set({ message: { kind: "error", text: `Couldn't share the run. ${r.error.message}` } });
-        return;
-      }
-      const note = r.value.withCourse ? " The course goes with it." : " The course was edited since this run, so it doesn't go with it.";
-      set({ message: { kind: "info", text: `Saved ${r.value.fileName}.${note}` } });
     },
 
     async resetRace() {

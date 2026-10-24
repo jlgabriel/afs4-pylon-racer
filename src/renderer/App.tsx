@@ -183,7 +183,7 @@ function CourseList() {
           <button onClick={newCourse}>New</button>
           <button
             onClick={() => void importFiles()}
-            title="Import courses (.pylonrace) and runs (.pylonrun) from other pilots, or the old pylon-race course.json. You can also drop the files on the window."
+            title="Import courses (.pylonrace) from other pilots, or the old pylon-race course.json. You can also drop the files on the window."
           >
             Import…
           </button>

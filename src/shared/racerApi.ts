@@ -30,7 +30,7 @@ export interface CourseSummary {
   revision: string;
   /** Length of one lap through the gate centers, meters. */
   lapLengthM: number;
-  /** Your best finished total on this revision (imported runs aside), seconds; null when none yet. */
+  /** The best finished total on this revision, seconds; null when none yet. */
   bestTotal: number | null;
   runs: number;
   /** Whether its pylons are installed in AFS4, and from which revision of the course. */
@@ -51,8 +51,6 @@ export interface SaveResult {
 
 export interface RunSummary {
   id: string;
-  /** Came from a .pylonrun file rather than flown here. */
-  imported: boolean;
   courseId: string;
   courseRevision: string;
   status: Run["result"]["status"];
@@ -70,7 +68,7 @@ export interface RunSummary {
 
 /** What an import did, file by file. */
 export interface ImportReport {
-  /** The course to show afterwards (the last course imported, or the course of the last run). */
+  /** The course to show afterwards (the last course imported). */
   courseId: string | null;
   /** One line per file, e.g. "Daggett Sprint: course added." */
   lines: string[];
@@ -133,8 +131,8 @@ export interface RacerApi {
 
   listCourses(): Promise<CourseSummary[]>;
   getCourse(id: string): Promise<RacerResult<Course>>;
-  /** Opens a file dialog for .pylonrace, .pylonrun and .json files (native courses and runs, and the
-   *  old pylon-race tool's course.json). */
+  /** Opens a file dialog for .pylonrace and .json files (native courses, and the old pylon-race
+   *  tool's course.json). */
   importFiles(): Promise<RacerResult<ImportReport>>;
   /** Imports files dropped on the window, sent as bytes. */
   importDropped(files: DroppedFile[]): Promise<RacerResult<ImportReport>>;
@@ -162,9 +160,6 @@ export interface RacerApi {
 
   listRuns(courseId: string): Promise<RunSummary[]>;
   getRun(id: string): Promise<RacerResult<Run>>;
-  /** Saves the run as a .pylonrun through a save dialog. Its course goes along when the course is
-   *  still on the revision the run was flown on. */
-  exportRun(id: string): Promise<RacerResult<{ fileName: string; withCourse: boolean }>>;
 
   /** Live state, pushed by main at up to ~20 Hz. Returns an unsubscribe function. */
   onLive(listener: (u: LiveUpdate) => void): () => void;

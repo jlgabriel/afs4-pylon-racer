@@ -31,7 +31,6 @@ const racer: RacerApi = {
   stopDemo: () => ipcRenderer.invoke("racer:stopDemo"),
   listRuns: (courseId) => ipcRenderer.invoke("racer:listRuns", courseId),
   getRun: (id) => ipcRenderer.invoke("racer:getRun", id),
-  exportRun: (id) => ipcRenderer.invoke("racer:exportRun", id),
   takeOpenedFiles: () => ipcRenderer.invoke("racer:takeOpenedFiles"),
   onLive: (listener) => subscribe<LiveUpdate>("racer:live", listener),
   onRunSaved: (listener) => subscribe<RunSummary>("racer:runSaved", listener),

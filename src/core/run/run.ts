@@ -1,6 +1,6 @@
-// A run (carrera): one finished attempt at a course, with everything needed to rank it, show its
-// result and replay it as a ghost. Stored as JSON in userData/runs/ and, from v0.4, shared as
-// .pylonrun files — so it is validated with zod on the way back in.
+// A run (carrera): one finished attempt at a course, with everything needed to rank it and show its
+// result. Stored as JSON in userData/runs/ (runs are never shared between computers) and validated
+// with zod on the way back in.
 import { z } from "zod";
 import type { Fix } from "../race/fix";
 import { DNF_REASONS, PENALTY_KINDS, type RaceSnapshot } from "../race/engine";
