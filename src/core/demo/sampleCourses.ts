@@ -6,6 +6,17 @@ import { COURSE_FORMAT, COURSE_VERSION, parseCourse, type Course } from "../cour
 
 const STAMP = "2026-10-18T00:00:00Z";
 
+/**
+ * The `updatedAt` of earlier copies of a sample that the app itself put on disk (or, for Juan's
+ * Grand Canyon run, his own copy before it shipped). A stored sample still carrying one of these was
+ * never saved by the user, so it may take the shipped text; anything else is the user's and is left
+ * alone. Add the old stamp here whenever a sample's text changes.
+ */
+export const SAMPLE_EARLIER_STAMPS: Readonly<Record<string, readonly string[]>> = {
+  "kdag-rules-test": [STAMP],
+  "grand-canyon-west-river-run": ["2026-10-24T10:53:37.241Z"],
+};
+
 export function sampleCourses(): Course[] {
   return [
     parseCourse({

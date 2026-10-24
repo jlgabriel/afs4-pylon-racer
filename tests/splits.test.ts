@@ -28,6 +28,12 @@ describe("splits", () => {
     expect(s.map((x) => x.delta)).toEqual([null, -3, 7, 6]);
   });
 
+  it("counts a penalty at the start line in the first sector", () => {
+    const s = splits([pass(0, 0), pass(1, 5), pass(2, 11)], [pen(0, 2)], null);
+    expect(s.map((x) => x.penalties)).toEqual([0, 2, 0]);
+    expect(s[1]!.sector + s[2]!.sector).toBe(11 + 2);
+  });
+
   it("puts a missed gate's time into the next sector, and compares it with the reference's two", () => {
     const s = splits([pass(0, 0), pass(2, 11), pass(3, 17)], [pen(1, 10)], best);
     expect(s.map((x) => x.step)).toEqual([0, 2, 3]);

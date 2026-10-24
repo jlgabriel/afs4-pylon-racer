@@ -81,6 +81,8 @@ export const courseSchema = z
   .superRefine((c, ctx) => {
     const problem = gateRoleProblem(c.gates, c.laps);
     if (problem) ctx.addIssue({ code: "custom", message: problem, path: ["gates"] });
+    const window = heightWindowProblem(c.gates);
+    if (window) ctx.addIssue({ code: "custom", message: window, path: ["gates"] });
     const ids = new Set<string>();
     for (const g of c.gates) {
       if (ids.has(g.id)) ctx.addIssue({ code: "custom", message: `Duplicate gate id ${g.id}`, path: ["gates"] });
@@ -103,6 +105,12 @@ export function gateRoleProblem(gates: readonly Pick<Gate, "type">[], laps: numb
     return "A multi-lap course has no finish gate: the start line closes every lap";
   }
   return null;
+}
+
+/** A gate whose minimum height is not below its maximum can never be passed cleanly. */
+export function heightWindowProblem(gates: readonly Pick<Gate, "topM" | "bottomM">[]): string | null {
+  const i = gates.findIndex((g) => g.topM !== null && g.bottomM !== null && g.bottomM >= g.topM);
+  return i < 0 ? null : `Gate ${i + 1}: the minimum height must be below the maximum`;
 }
 
 /** Parse untrusted JSON into a Course (throws ZodError). */

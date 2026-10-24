@@ -23,11 +23,17 @@ export interface Split {
 
 type Ref = Pick<Run, "passes" | "penalties">;
 
+/** Penalties before this pass's sector begins: everything up to `step`, except that the start
+ *  line's own (a ceiling there) belong to the first sector, since the start has no sector. */
+function before(penalties: readonly Pick<Penalty, "step" | "seconds">[], step: number): number {
+  return step === 0 ? 0 : penaltiesUpTo(penalties, step);
+}
+
 export function splits(passes: readonly Pass[], penalties: readonly Penalty[], ref: Ref | null): Split[] {
   const out: Split[] = [];
   let prev: Pass | null = null;
   for (const pass of passes) {
-    const pen = prev ? penaltiesUpTo(penalties, pass.step) - penaltiesUpTo(penalties, prev.step) : 0;
+    const pen = prev ? penaltiesUpTo(penalties, pass.step) - before(penalties, prev.step) : 0;
     const sector = prev ? pass.elapsed - prev.elapsed + pen : 0;
     let sectorDelta: number | null = null;
     let delta: number | null = null;
@@ -36,7 +42,7 @@ export function splits(passes: readonly Pass[], penalties: readonly Penalty[], r
       delta = pass.elapsed + penaltiesUpTo(penalties, pass.step) - (r.elapsed + penaltiesUpTo(ref.penalties, pass.step));
       const rPrev = ref.passes.find((p) => p.step === prev!.step);
       if (rPrev) {
-        const refSector = r.elapsed - rPrev.elapsed + penaltiesUpTo(ref.penalties, pass.step) - penaltiesUpTo(ref.penalties, prev.step);
+        const refSector = r.elapsed - rPrev.elapsed + penaltiesUpTo(ref.penalties, pass.step) - before(ref.penalties, prev.step);
         sectorDelta = sector - refSector;
       }
     }

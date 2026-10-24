@@ -28,6 +28,12 @@ describe("sample courses", () => {
     expect(storage.getCourse(rules.id)!.description).toBe("my notes");
   });
 
+  it("are left alone after a user's edit, even one stamped earlier than the shipped text", () => {
+    storage.saveCourse({ ...rules, name: "My rules", updatedAt: "2026-10-18T09:30:00.000Z" });
+    new Storage(userData).init();
+    expect(storage.getCourse(rules.id)!.name).toBe("My rules");
+  });
+
   it("are left alone when the user moved a gate", () => {
     const moved = { ...rules, updatedAt: "2026-10-18T00:00:00Z", gates: rules.gates.map((g) => ({ ...g, widthM: 120 })) };
     storage.saveCourse(moved);

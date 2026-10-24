@@ -1,7 +1,7 @@
 // Pure edits for the course designer. A draft may be unfinished (fewer than two gates); it becomes a
 // Course only through parseCourse() when saved. Roles stay positional, so every edit ends in
 // normalizeRoles(): the first gate is the start, and on a single-lap course the last is the finish.
-import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, rulesSchema, type Course, type Gate, type GateType } from "./course";
+import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, heightWindowProblem, rulesSchema, type Course, type Gate, type GateType } from "./course";
 import { destination, fromLocal, haversine, initialBearing, lerpAngle, toLocal, wrap360, type LonLat } from "../geo/geo";
 
 export type Draft = Omit<Course, "gates"> & { gates: Gate[] };
@@ -43,7 +43,13 @@ export function normalizeRoles(d: Draft): Draft {
 export function draftProblem(d: Draft): string | null {
   if (!d.name.trim()) return "Give the course a name";
   if (d.gates.length < 2) return "Add at least two gates: click the map to place them";
-  return gateRoleProblem(d.gates, d.laps);
+  return gateRoleProblem(d.gates, d.laps) ?? heightWindowProblem(d.gates);
+}
+
+/** The width a new gate copies from its neighbour: a turn pylon's widthM is how far out it may be
+ *  passed, not a gate width. */
+function widthAfter(g: Gate | undefined): number {
+  return g && g.type !== "turn" ? g.widthM : DEFAULT_WIDTH_M;
 }
 
 function nextGateId(d: Draft): string {
@@ -61,7 +67,7 @@ export function addGate(d: Draft, at: LonLat): Draft {
     id: nextGateId(d),
     type: "gate",
     center: at,
-    widthM: prev?.widthM ?? DEFAULT_WIDTH_M,
+    widthM: widthAfter(prev),
     headingDeg: Math.round(heading),
     pylon: null,
     groundElevM: null,
@@ -89,7 +95,7 @@ export function insertGateAfter(d: Draft, id: string): Draft | null {
     id: nextGateId(d),
     type: "gate",
     center: at,
-    widthM: a.widthM,
+    widthM: widthAfter(a),
     headingDeg: Math.round(wrap360(heading)) % 360,
     pylon: null,
     groundElevM: null,

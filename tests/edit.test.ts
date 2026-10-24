@@ -80,6 +80,19 @@ describe("building a course on the map", () => {
     expect(new Set(e.gates.map((g) => g.id)).size).toBe(4);
   });
 
+  it("does not copy a turn pylon's reach as a gate width", () => {
+    const d = setKind(threeGates(), "g2", "turn");
+    const turn = { ...d, gates: d.gates.map((g) => (g.id === "g2" ? { ...g, widthM: 300 } : g)) };
+    expect(insertGateAfter(turn, "g2")!.gates[2]!.widthM).toBe(80);
+  });
+
+  it("refuses a minimum height that is not below the maximum", () => {
+    const d = threeGates();
+    const bad = { ...d, gates: d.gates.map((g, i) => (i === 1 ? { ...g, topM: 40, bottomM: 50 } : g)) };
+    expect(draftProblem(bad)).toBe("Gate 2: the minimum height must be below the maximum");
+    expect(() => parseCourse(bad)).toThrow(/minimum height/);
+  });
+
   it("inserts nothing after the finish, but closes the lap on a multi-lap course", () => {
     const d = threeGates();
     expect(insertGateAfter(d, d.gates[2]!.id)).toBeNull();

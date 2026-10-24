@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:f
 import path from "node:path";
 import { z } from "zod";
 import { courseRevision, parseCourse, type Course } from "../core/course/course";
-import { sampleCourses } from "../core/demo/sampleCourses";
+import { SAMPLE_EARLIER_STAMPS, sampleCourses } from "../core/demo/sampleCourses";
 import type { ClassChoices } from "../core/ranking/classes";
 import { parseRun, type Run } from "../core/run/run";
 import { summarizeRun } from "../core/run/summaries";
@@ -57,7 +57,8 @@ export class Storage {
 
   /** Create the folders and seed any sample course that is missing and was not deleted by the user,
    *  so a sample added in a new version reaches existing installs too. A sample the user never saved
-   *  takes the newer text (description, name) of the same revision; its runs stay comparable. */
+   *  (its stamp is one the app shipped, SAMPLE_EARLIER_STAMPS) takes the newer text of the same
+   *  revision; its runs stay comparable. */
   init(): void {
     mkdirSync(this.coursesDir, { recursive: true });
     mkdirSync(this.runsDir, { recursive: true });
@@ -71,7 +72,13 @@ export class Storage {
         continue; // unreadable: leave it for the user, never overwrite
       }
       if (!stored) this.writeCourse(c);
-      else if (stored.updatedAt < c.updatedAt && courseRevision(stored) === courseRevision(c)) this.writeCourse(c);
+      else if (
+        stored.updatedAt !== c.updatedAt &&
+        (SAMPLE_EARLIER_STAMPS[c.id] ?? []).includes(stored.updatedAt) &&
+        courseRevision(stored) === courseRevision(c)
+      ) {
+        this.writeCourse(c);
+      }
     }
   }
 
