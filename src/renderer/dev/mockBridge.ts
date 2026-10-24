@@ -10,6 +10,7 @@ import type { ZipCodec } from "../../core/files/zip";
 import { destination } from "../../core/geo/geo";
 import type { Run } from "../../core/run/run";
 import { rankRuns, summarizeCourse, summarizeRun } from "../../core/run/summaries";
+import { classOfAircraft, isClassId, resolveClass, type ClassChoices } from "../../core/ranking/classes";
 import { RaceSession } from "../../core/session/raceSession";
 import type { AppInfo, ImportReport, LiveUpdate, Prefs, RacerApi, RacerResult, RunSummary, TelemetryStatus } from "../../shared/racerApi";
 
@@ -39,6 +40,11 @@ export function installMockBridge(): void {
   let pilots: string[] = [];
   let lastCourseId: string | null = null;
   let prefs: Prefs = { onTop: false };
+  let classChoices: ClassChoices = { aircraft: {}, noAircraft: null };
+  // ?aircraft=c172 flies the demo in another aircraft (another class); ?aircraft=none flies it with no
+  // aircraft name, like UDP; ?aircraft=my_plane is an aircraft the app does not know.
+  const aircraftParam = new URLSearchParams(window.location.search).get("aircraft");
+  const demoAircraft = aircraftParam === "none" ? null : (aircraftParam ?? "extra330");
   let session: RaceSession | null = null;
   let demo: number | null = null;
   /** courseId → installed revision: a pretend scenery/poi/. */
@@ -55,13 +61,14 @@ export function installMockBridge(): void {
     afs4DirFound: true,
     lastCourseId,
     prefs,
+    classChoices,
   });
   const notFound = (id: string): RacerResult<never> => ({ ok: false, error: { code: "not-found", message: id } });
   const ok = <T>(value: T): RacerResult<T> => ({ ok: true, value });
 
   const telemetry = (): TelemetryStatus => ({
     active: demo !== null ? "demo" : null,
-    aircraft: demo !== null ? "extra330" : null,
+    aircraft: demo !== null ? demoAircraft : null,
     udp: { ageS: null, hz: 0, error: null },
     reader: { ageS: null, hz: 0, error: "ECONNREFUSED", connected: false },
     demo: { running: demo !== null },
@@ -92,6 +99,15 @@ export function installMockBridge(): void {
       return info();
     },
     chooseAfs4Dir: async () => info(),
+    setAircraftClass: async (aircraftId, classId) => {
+      const cls = isClassId(classId) ? classId : null;
+      if (aircraftId === null) classChoices = { ...classChoices, noAircraft: cls };
+      else if (!classOfAircraft(aircraftId)) {
+        const { [aircraftId]: _old, ...rest } = classChoices.aircraft;
+        classChoices = { ...classChoices, aircraft: cls ? { ...rest, [aircraftId]: cls } : rest };
+      }
+      return info();
+    },
     setPrefs: async (patch) => {
       prefs = { ...prefs, ...patch };
       return info();
@@ -173,6 +189,7 @@ export function installMockBridge(): void {
         appVersion: __APP_VERSION__,
         newId: () => crypto.randomUUID(),
         nowIso: () => new Date().toISOString(),
+        classOf: (aircraftId) => resolveClass(aircraftId, classChoices),
       });
       push();
       return ok(summary(c));
@@ -208,7 +225,7 @@ export function installMockBridge(): void {
         const elapsed = performance.now() / 1000 - t0;
         while (i < fixes.length && fixes[i]!.t <= elapsed) {
           const f = fixes[i++]!;
-          const { run } = s.feed({ ...f, t: t0 + f.t }, { kind: "demo", hz: 20, aircraft: "extra330" });
+          const { run } = s.feed({ ...f, t: t0 + f.t }, { kind: "demo", hz: 20, aircraft: demoAircraft });
           if (run) {
             runs.set(run.id, run);
             savedListeners.forEach((l) => l(summarizeRun(run)));

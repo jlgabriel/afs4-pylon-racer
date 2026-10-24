@@ -357,6 +357,43 @@
   font-size: var(--size-xs);
 }
 
+.runs-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.class-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.class-tab {
+  font-size: var(--size-xs);
+  padding: var(--space-1) var(--space-2);
+}
+.class-tab.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.runs-sub {
+  margin-top: var(--space-4);
+}
+.runs-empty {
+  margin-top: var(--space-2);
+  font-size: var(--size-sm);
+}
+.runs tr.me td {
+  color: var(--accent);
+}
+/* An aircraft the app does not know: pick the class it is ranked in. */
+.class-pick select {
+  font: inherit;
+  color: inherit;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+}
 .runs table {
   width: 100%;
   border-collapse: collapse;

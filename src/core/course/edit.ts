@@ -24,7 +24,6 @@ export function newDraft(id: string, author: string, nowIso: string): Draft {
     laps: 1,
     gates: [],
     rules: rulesSchema.parse({}),
-    medals: {},
   };
 }
 

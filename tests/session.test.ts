@@ -47,6 +47,24 @@ describe("the seeded sample courses", () => {
   });
 });
 
+describe("the run's class", () => {
+  const flyWith = (aircraft: string | null, extra: Partial<SessionContext> = {}) => {
+    const session = new RaceSession(munich, { ...ctx, ...extra });
+    let run: Run | null = null;
+    for (const f of demoFlight(munich, { rateHz: 5 })) run = session.feed(f, { kind: "udp", hz: 5, aircraft }).run ?? run;
+    return run!.aircraft;
+  };
+
+  it("comes from the built-in table by default", () => {
+    expect(flyWith("c172")).toEqual({ id: "c172", classId: "ga" });
+    expect(flyWith(null)).toEqual({ id: null, classId: null });
+  });
+
+  it("asks the context, which knows the pilot's choices for UDP and unknown aircraft", () => {
+    expect(flyWith(null, { classOf: (a) => (a === null ? "jet" : null) })).toEqual({ id: null, classId: "jet" });
+  });
+});
+
 describe("a finished session becomes a valid run", () => {
   it("carries the course, aircraft class, source and a track", () => {
     const session = new RaceSession(munich, ctx);

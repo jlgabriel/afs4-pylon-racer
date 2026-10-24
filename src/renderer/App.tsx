@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AIRCRAFT_CLASSES, classLabel, classOfAircraft, resolveClass } from "../core/ranking/classes";
 import type { TelemetryStatus } from "../shared/racerApi";
 import { fmtDistance, fmtTime } from "./app/format";
 import { Designer } from "./design/Designer";
@@ -223,8 +224,45 @@ function TelemetryPills({ t }: { t: TelemetryStatus | null }) {
       <span className={`pill ${udpOn ? "on" : ""}`} title={t.udp.error ?? "AFS4 UDP broadcast on port 49002"}>
         <span className="dot" /> UDP {udpOn ? `${Math.round(t.udp.hz)} Hz` : t.udp.error ? "error" : "off"}
       </span>
-      {t.aircraft && <span className="pill">{t.aircraft}</span>}
+      <AircraftClass t={t} />
     </div>
+  );
+}
+
+/** The aircraft and the class it is ranked in. An aircraft the app does not know, or none at all
+ *  (UDP), gets a class picker; the choice is remembered. */
+function AircraftClass({ t }: { t: TelemetryStatus }) {
+  const choices = useStore((s) => s.app?.classChoices);
+  const setAircraftClass = useStore((s) => s.setAircraftClass);
+  if (!choices || (!t.aircraft && !t.active)) return null;
+  const known = classOfAircraft(t.aircraft);
+  if (known) {
+    return (
+      <span className="pill" title="Runs are ranked against others in this aircraft class">
+        {t.aircraft} · {classLabel(known)}
+      </span>
+    );
+  }
+  const cls = resolveClass(t.aircraft, choices);
+  return (
+    <label
+      className="pill class-pick"
+      title={
+        t.aircraft
+          ? "Pylon Racer doesn't know this aircraft: choose the class its runs are ranked in"
+          : "UDP doesn't say which aircraft you fly: choose the class your runs are ranked in"
+      }
+    >
+      {t.aircraft ?? "Aircraft"} ·{" "}
+      <select value={cls ?? ""} onChange={(e) => void setAircraftClass(t.aircraft, e.target.value || null)}>
+        <option value="">Unclassified</option>
+        {AIRCRAFT_CLASSES.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

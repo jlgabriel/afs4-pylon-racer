@@ -7,6 +7,7 @@ import type { Fix } from "../../core/race/fix";
 import type { Pass, Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
 import type { Run } from "../../core/run/run";
 import { classLabel } from "../../core/ranking/classes";
+import { classesOf, currentClass, leaderboard, pilotRuns } from "../../core/ranking/ranking";
 import type { LiveState } from "../../core/session/raceSession";
 import type { RunSummary, TelemetryStatus } from "../../shared/racerApi";
 import { KMH_PER_MS, fmtDelta, fmtDistance, fmtTime } from "../app/format";
@@ -30,7 +31,6 @@ export function RaceView() {
   const course = useStore((s) => s.selected);
   const update = useStore((s) => s.update);
   const trail = useStore((s) => s.trail);
-  const runs = useStore((s) => s.runs);
   const bestRun = useStore((s) => s.bestRun);
   const targetRun = useStore((s) => s.targetRun);
   const resetRace = useStore((s) => s.resetRace);
@@ -88,7 +88,11 @@ export function RaceView() {
                 {fmtDelta(lastDelta)} vs best at gate {lastPass!.gateIndex + 1}
               </span>
             )}
-            {course && bestRun && <span className="muted num">best {fmtTime(bestRun.result.total)}</span>}
+            {course && bestRun && (
+              <span className="muted num">
+                best {fmtTime(bestRun.result.total)} · {classLabel(bestRun.aircraft.classId)}
+              </span>
+            )}
           </div>
 
           <GateStrip race={race} />
@@ -120,7 +124,7 @@ export function RaceView() {
         </section>
       </div>
 
-      <Runs runs={runs} />
+      <Rankings />
     </main>
   );
 }
@@ -298,44 +302,112 @@ function Value({ label, value, unit }: { label: string; value: number | null; un
   );
 }
 
-function Runs({ runs }: { runs: RunSummary[] }) {
+/** The course's ranking in one aircraft class (a row per pilot of this computer), then the active
+ *  pilot's own runs in that class. Shows the class flown now unless the pilot picks another. */
+function Rankings() {
+  const runs = useStore((s) => s.runs);
+  const pilot = useStore((s) => s.app?.pilot ?? "");
+  const flying = useStore((s) => s.flyingClass);
+  const pick = useStore((s) => s.rankPick);
+  const pickClass = useStore((s) => s.pickRankClass);
   if (runs.length === 0) return <section className="panel runs muted">No runs on this course yet.</section>;
+
+  const now = currentClass(runs, pilot, flying);
+  const shown = pick ? pick.cls : now;
+  const classes = classesOf(runs);
+  if (!classes.includes(now)) classes.push(now);
+  const board = leaderboard(runs, shown);
+  const mine = pilotRuns(runs, pilot, shown);
   return (
     <section className="panel runs">
-      <div className="label">Runs on this course</div>
-      <table className="num">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Total</th>
-            <th>Penalties</th>
-            <th>Pilot</th>
-            <th>Aircraft</th>
-            <th>Class</th>
-            <th>Source</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.slice(0, 20).map((r, i) => (
-            <tr key={r.id} className={r.status === "dnf" ? "muted" : undefined}>
-              <td>{r.status === "dnf" ? "DNF" : i + 1}</td>
-              <td>
-                {fmtTime(r.total)}
-                {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}
-              </td>
-              <td>{r.penaltyTotal > 0 ? `+${r.penaltyTotal.toFixed(1)}` : "—"}</td>
-              <td>{r.pilot}</td>
-              <td>{r.aircraftId ?? "—"}</td>
-              <td>{classLabel(r.classId)}</td>
-              <td>
-                {r.source} {r.sourceHz ? `${Math.round(r.sourceHz)} Hz` : ""}
-              </td>
-              <td>{new Date(r.startedAt).toLocaleString()}</td>
-            </tr>
+      <div className="runs-head">
+        <span className="label">Ranking</span>
+        <div className="class-tabs" role="group" aria-label="Aircraft class">
+          {classes.map((c) => (
+            <button
+              key={c ?? "none"}
+              className={`class-tab ${c === shown ? "on" : ""}`}
+              aria-pressed={c === shown}
+              title={c === now ? "The class you are flying" : undefined}
+              onClick={() => pickClass(c === now ? undefined : c)}
+            >
+              {classLabel(c)}
+              {c === now && flying !== undefined ? " ✈" : ""}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+      {board.length === 0 ? (
+        <div className="muted runs-empty">No finished runs in {classLabel(shown)} yet.</div>
+      ) : (
+        <table className="num">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pilot</th>
+              <th>Total</th>
+              <th>Penalties</th>
+              <th>Aircraft</th>
+              <th>Source</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {board.map((r, i) => (
+              <tr key={r.id} className={r.pilot === pilot ? "me" : undefined}>
+                <td>{i + 1}</td>
+                <td>{r.pilot}</td>
+                <td>{fmtTime(r.total)}</td>
+                <td>{penaltyCell(r)}</td>
+                <td>{r.aircraftId ?? "—"}</td>
+                <td>{sourceCell(r)}</td>
+                <td>{new Date(r.startedAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <div className="label runs-sub">Your runs · {pilot}</div>
+      {mine.length === 0 ? (
+        <div className="muted runs-empty">You have no runs in {classLabel(shown)} yet.</div>
+      ) : (
+        <table className="num">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Total</th>
+              <th>Penalties</th>
+              <th>Aircraft</th>
+              <th>Source</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mine.slice(0, 20).map((r, i) => (
+              <tr key={r.id} className={r.status === "dnf" ? "muted" : undefined}>
+                <td>{r.status === "dnf" ? "DNF" : i + 1}</td>
+                <td>
+                  {fmtTime(r.total)}
+                  {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}
+                </td>
+                <td>{penaltyCell(r)}</td>
+                <td>{r.aircraftId ?? "—"}</td>
+                <td>{sourceCell(r)}</td>
+                <td>{new Date(r.startedAt).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
+}
+
+function penaltyCell(r: RunSummary): string {
+  return r.penaltyTotal > 0 ? `+${r.penaltyTotal.toFixed(1)}` : "—";
+}
+
+function sourceCell(r: RunSummary): string {
+  return `${r.source}${r.sourceHz ? ` ${Math.round(r.sourceHz)} Hz` : ""}`;
 }

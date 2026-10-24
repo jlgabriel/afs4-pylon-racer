@@ -5,7 +5,7 @@ import type { Course } from "../course/course";
 import { haversine } from "../geo/geo";
 import { RaceEngine, type RaceEvent, type RaceSnapshot } from "../race/engine";
 import type { Fix } from "../race/fix";
-import { classOfAircraft } from "../ranking/classes";
+import { classOfAircraft, type AircraftClassId } from "../ranking/classes";
 import { Recorder, buildRun, type Run, type SourceKind } from "../run/run";
 
 export interface SourceInfo {
@@ -34,6 +34,9 @@ export interface SessionContext {
   newId: () => string;
   /** Wall-clock ISO time; injected so tests are deterministic. */
   nowIso: () => string;
+  /** The class a run with this aircraft is ranked in, with the pilot's choices for aircraft the app
+   *  does not know (and for UDP, which names none). Defaults to the built-in table only. */
+  classOf?: (aircraftId: string | null) => AircraftClassId | null;
 }
 
 export class RaceSession {
@@ -91,7 +94,7 @@ export class RaceSession {
         courseName: this.course.name,
         pilot: this.racePilot ?? this.pilot,
         aircraftId: this.aircraftSeen,
-        classId: classOfAircraft(this.aircraftSeen),
+        classId: (this.ctx.classOf ?? classOfAircraft)(this.aircraftSeen),
         source: source.kind,
         sourceHz: source.hz,
         startedAt: this.startedAt ?? this.ctx.nowIso(),

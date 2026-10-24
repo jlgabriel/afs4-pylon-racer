@@ -3,11 +3,12 @@
 // draws what it receives.
 import { randomUUID } from "node:crypto";
 import type { Course } from "../core/course/course";
+import { resolveClass } from "../core/ranking/classes";
 import { summarizeCourse } from "../core/run/summaries";
 import { RaceSession } from "../core/session/raceSession";
 import type { CourseSummary, LiveUpdate, RunSummary } from "../shared/racerApi";
 import { log } from "./log";
-import type { Storage } from "./storage";
+import { classChoicesOf, type Storage } from "./storage";
 import type { TelemetryHub } from "./telemetry";
 
 declare const __APP_VERSION__: string;
@@ -67,6 +68,7 @@ export class RaceController {
       appVersion: __APP_VERSION__,
       newId: () => randomUUID(),
       nowIso: () => new Date().toISOString(),
+      classOf: (aircraftId) => resolveClass(aircraftId, classChoicesOf(this.storage.readSettings())),
     });
     log.info(`course selected: ${course.name} (${course.id})`);
     this.push(true);

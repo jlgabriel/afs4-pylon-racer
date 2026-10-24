@@ -1,7 +1,7 @@
 // Everything the app keeps on disk, under userData:
 //   courses/<id>.json   one native course per file
 //   runs/<id>.json      one run per file (with its track)
-//   settings.json       pilots, AFS4 folder override, last course, removed samples
+//   settings.json       pilots, AFS4 folder override, last course, removed samples, chosen classes
 // Files are validated on the way in; a file that fails is logged and skipped, never fatal. Run
 // summaries are cached in memory after the first read (the tracks make run files large). The
 // runs/imported/ folder of v0.4.0-pre (runs from .pylonrun files) is left alone and never read.
@@ -10,6 +10,7 @@ import path from "node:path";
 import { z } from "zod";
 import { courseRevision, parseCourse, type Course } from "../core/course/course";
 import { sampleCourses } from "../core/demo/sampleCourses";
+import type { ClassChoices } from "../core/ranking/classes";
 import { parseRun, type Run } from "../core/run/run";
 import { summarizeRun } from "../core/run/summaries";
 import type { RunSummary } from "../shared/racerApi";
@@ -28,8 +29,16 @@ const settingsSchema = z.object({
   removedSamples: z.array(z.string()).default([]),
   /** Keep the window above the simulator (one monitor, AFS4 windowed). */
   onTop: z.boolean().default(false),
+  /** Classes chosen for aircraft the app does not know, by aircraft folder id. */
+  aircraftClasses: z.record(z.string(), z.string()).default({}),
+  /** The class flown when the data has no aircraft name (UDP). */
+  noAircraftClass: z.string().nullable().default(null),
 });
 export type Settings = z.infer<typeof settingsSchema>;
+
+export function classChoicesOf(s: Settings): ClassChoices {
+  return { aircraft: s.aircraftClasses, noAircraft: s.noAircraftClass };
+}
 
 /** File names are derived from ids; anything else in an id is refused rather than escaped. */
 export const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;

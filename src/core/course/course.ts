@@ -58,12 +58,6 @@ export const rulesSchema = z.object({
 });
 export type Rules = z.infer<typeof rulesSchema>;
 
-export const medalsSchema = z.object({
-  gold: z.number().positive(),
-  silver: z.number().positive(),
-  bronze: z.number().positive(),
-});
-
 export const courseSchema = z
   .object({
     format: z.literal(COURSE_FORMAT),
@@ -77,8 +71,7 @@ export const courseSchema = z
     laps: z.number().int().min(1).max(50).default(1),
     gates: z.array(gateSchema).min(2),
     rules: rulesSchema.default(rulesSchema.parse({})),
-    /** Medal times per aircraft class id. */
-    medals: z.record(z.string(), medalsSchema).default({}),
+    // Courses of v0.4.0-pre and earlier carry a `medals` field: unknown keys are dropped on parse.
   })
   .superRefine((c, ctx) => {
     const problem = gateRoleProblem(c.gates, c.laps);
@@ -114,7 +107,7 @@ export function parseCourse(data: unknown): Course {
 
 /**
  * The text that decides the course revision: everything that changes how a run is scored, nothing
- * cosmetic (name, description, medals). Two runs are comparable only on the same revision. Keys
+ * cosmetic (name, description). Two runs are comparable only on the same revision. Keys
  * are emitted in a fixed order so the same course always gives the same string.
  */
 export function revisionInput(c: Course): string {

@@ -14,6 +14,7 @@ const racer: RacerApi = {
   setPilot: (name) => ipcRenderer.invoke("racer:setPilot", name),
   removePilot: (name) => ipcRenderer.invoke("racer:removePilot", name),
   chooseAfs4Dir: () => ipcRenderer.invoke("racer:chooseAfs4Dir"),
+  setAircraftClass: (aircraftId, classId) => ipcRenderer.invoke("racer:setAircraftClass", aircraftId, classId),
   setPrefs: (patch) => ipcRenderer.invoke("racer:setPrefs", patch),
   listCourses: () => ipcRenderer.invoke("racer:listCourses"),
   getCourse: (id) => ipcRenderer.invoke("racer:getCourse", id),

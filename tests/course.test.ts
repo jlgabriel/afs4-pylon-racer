@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { courseRevision, gateRoleProblem, raceSequence } from "../src/core/course/course";
+import { courseRevision, courseSchema, gateRoleProblem, raceSequence } from "../src/core/course/course";
 import { importRctCourse, isRctCourse } from "../src/core/course/importRct";
 import { haversine, pylonsOfGate } from "../src/core/geo/geo";
 import { makeCourse, straightCourse } from "./helpers";
@@ -28,6 +28,11 @@ describe("gate roles", () => {
     expect(gateRoleProblem([{ type: "start" }, { type: "gate" }, { type: "level" }], 3)).toBeNull();
   });
 
+  it("drops the medals of older course files", () => {
+    const old = { ...straightCourse(), medals: { ga: { gold: 1, silver: 2, bronze: 3 } } };
+    expect(courseSchema.parse(old)).not.toHaveProperty("medals");
+  });
+
   it("the zod schema enforces the same rule", () => {
     expect(() => makeCourse([{ type: "gate", x: 0, y: 0, heading: 0 }, { type: "finish", x: 0, y: 100, heading: 0 }])).toThrow();
   });
@@ -47,7 +52,7 @@ describe("race sequence", () => {
 describe("revision", () => {
   it("is stable for the same course and ignores cosmetic fields", () => {
     const a = straightCourse();
-    const b = { ...straightCourse(), name: "Renamed", description: "x", medals: { ga: { gold: 1, silver: 2, bronze: 3 } } };
+    const b = { ...straightCourse(), name: "Renamed", description: "x", author: "Rodeo" };
     expect(courseRevision(a)).toBe(courseRevision(b));
   });
 

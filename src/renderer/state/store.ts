@@ -4,6 +4,8 @@
 import { create } from "zustand";
 import { courseRevision, type Course } from "../../core/course/course";
 import { draftOf, draftProblem, newDraft, type Draft } from "../../core/course/edit";
+import { resolveClass } from "../../core/ranking/classes";
+import { currentClass, pilotBest, type ClassKey } from "../../core/ranking/ranking";
 import type { Run } from "../../core/run/run";
 import type { AppInfo, CourseSummary, ImportReport, LiveUpdate, Prefs, RunSummary } from "../../shared/racerApi";
 import { getRacer } from "../app/racer";
@@ -24,7 +26,11 @@ interface State {
   courses: CourseSummary[];
   selected: Course | null;
   runs: RunSummary[];
-  /** The active pilot's best finished run of the selected course revision. */
+  /** The class of the aircraft flying now (with the pilot's choices); undefined until telemetry says. */
+  flyingClass: ClassKey | undefined;
+  /** The class the ranking shows when the pilot picked one; null = follow the class flown. */
+  rankPick: { cls: ClassKey } | null;
+  /** The active pilot's best finished run of the selected course revision, in the class flown. */
   bestRun: Run | null;
   /** The best run as it was when the current attempt was armed: what this attempt races against.
    *  It stays put when the attempt itself becomes the new best, so it is never compared to itself. */
@@ -54,6 +60,9 @@ interface State {
   stopDemo(): Promise<void>;
   setPilot(name: string): Promise<void>;
   removePilot(name: string): Promise<void>;
+  /** The class an aircraft the app does not know (or UDP, aircraftId null) is ranked in. */
+  setAircraftClass(aircraftId: string | null, classId: string | null): Promise<void>;
+  pickRankClass(cls: ClassKey | undefined): void;
   chooseAfs4Dir(): Promise<void>;
   setPrefs(patch: Partial<Prefs>): Promise<void>;
   dismissMessage(): void;
@@ -83,11 +92,23 @@ export const useStore = create<State>((set, get) => {
     }
     const revision = courseRevision(course);
     const runs = (await racer.listRuns(course.id)).filter((r) => r.courseRevision === revision);
-    const pilot = get().app?.pilot;
-    const best = runs.find((r) => r.status === "finished" && r.pilot === pilot);
+    const pilot = get().app?.pilot ?? "";
+    const best = pilotBest(runs, pilot, currentClass(runs, pilot, get().flyingClass));
     const bestRun = best ? await racer.getRun(best.id) : null;
     const value = bestRun?.ok ? bestRun.value : null;
     set(arm ? { courses, runs, bestRun: value, targetRun: value } : { courses, runs, bestRun: value });
+  };
+
+  /** Follow the class flown now: the best (and, before the start, the target) is in that class. */
+  const updateFlyingClass = (): void => {
+    const s = get();
+    const t = s.update?.telemetry;
+    if (!t?.active || !s.app) return;
+    const cls = resolveClass(t.aircraft, s.app.classChoices);
+    if (cls === s.flyingClass) return;
+    set({ flyingClass: cls });
+    const status = s.update?.live?.race.status;
+    if (status !== "running") void refreshCourseData(status === undefined || status === "waiting");
   };
 
   /** Unsaved designer changes are only dropped with the user's consent. */
@@ -112,6 +133,8 @@ export const useStore = create<State>((set, get) => {
     courses: [],
     selected: null,
     runs: [],
+    flyingClass: undefined,
+    rankPick: null,
     bestRun: null,
     targetRun: null,
     update: null,
@@ -136,6 +159,7 @@ export const useStore = create<State>((set, get) => {
         const fix = update.live?.fix;
         const trail = fix ? appendTrail(get().trail, fix) : get().trail;
         set(trail !== get().trail ? { update, trail } : { update });
+        updateFlyingClass();
       });
       racer.onRunSaved(() => void refreshCourseData(false));
       racer.onImported((r) => void afterImport(r));
@@ -155,7 +179,7 @@ export const useStore = create<State>((set, get) => {
         set({ message: { kind: "error", text: !sel.ok ? sel.error.message : course.ok ? "" : course.error.message } });
         return;
       }
-      set({ selected: course.value, trail: [], runs: [], bestRun: null, targetRun: null, view: "race", draft: null, draftDirty: false });
+      set({ selected: course.value, trail: [], runs: [], rankPick: null, bestRun: null, targetRun: null, view: "race", draft: null, draftDirty: false });
       await refreshCourseData(true);
     },
 
@@ -221,6 +245,17 @@ export const useStore = create<State>((set, get) => {
       const racer = getRacer();
       if (!racer) return;
       set({ app: await racer.removePilot(name) });
+    },
+
+    async setAircraftClass(aircraftId, classId) {
+      const racer = getRacer();
+      if (!racer) return;
+      set({ app: await racer.setAircraftClass(aircraftId, classId) });
+      updateFlyingClass();
+    },
+
+    pickRankClass(cls) {
+      set({ rankPick: cls === undefined ? null : { cls } });
     },
 
     async chooseAfs4Dir() {

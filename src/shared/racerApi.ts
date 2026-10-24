@@ -9,6 +9,7 @@
 // Adding a method = its type here + the preload + a handler in main/ipc.ts (channel "racer:<name>").
 import type { Course } from "../core/course/course";
 import type { LiveState } from "../core/session/raceSession";
+import type { ClassChoices } from "../core/ranking/classes";
 import type { Run, SourceKind } from "../core/run/run";
 
 export type RacerError =
@@ -117,6 +118,8 @@ export interface AppInfo {
   /** The course selected last time, to reopen it. */
   lastCourseId: string | null;
   prefs: Prefs;
+  /** Classes the pilot chose for aircraft the app does not know, and for UDP. */
+  classChoices: ClassChoices;
 }
 
 export interface Prefs {
@@ -133,6 +136,10 @@ export interface RacerApi {
   removePilot(name: string): Promise<AppInfo>;
   /** Opens a folder dialog to pick the AFS4 user folder (the one holding scenery/). */
   chooseAfs4Dir(): Promise<AppInfo>;
+  /** Chooses the class an aircraft the app does not know is ranked in (aircraftId null = flying with
+   *  no aircraft name, UDP). A null class clears the choice. Built-in aircraft keep their own. Runs
+   *  from the next finish use it. */
+  setAircraftClass(aircraftId: string | null, classId: string | null): Promise<AppInfo>;
   /** Changes some of the preferences; main applies "on top" to the window itself. */
   setPrefs(patch: Partial<Prefs>): Promise<AppInfo>;
 

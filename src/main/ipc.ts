@@ -7,6 +7,7 @@ import path from "node:path";
 import { ZodError } from "zod";
 import { parseCourse, type Course } from "../core/course/course";
 import { COURSE_EXT, courseFileName, IMPORT_EXTS } from "../core/files/share";
+import { classOfAircraft, isClassId } from "../core/ranking/classes";
 import { rankRuns, summarizeCourse } from "../core/run/summaries";
 import type { AppInfo, CourseSummary, DroppedFile, ImportReport, Prefs, RacerError, RacerResult, SaveResult } from "../shared/racerApi";
 import { writeFileAtomic } from "./fsAtomic";
@@ -14,7 +15,7 @@ import { Afs4NotFoundError, type Installer } from "./installer";
 import { log } from "./log";
 import type { RaceController } from "./race";
 import { courseFile, importFiles, MAX_IMPORT_BYTES } from "./sharing";
-import { SAFE_ID, type Storage } from "./storage";
+import { classChoicesOf, SAFE_ID, type Storage } from "./storage";
 import { elevations, searchPlaces } from "./web";
 
 declare const __APP_VERSION__: string;
@@ -51,6 +52,7 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
       afs4DirFound: existsSync(afs4Dir()),
       lastCourseId: s.lastCourseId,
       prefs: { onTop: s.onTop },
+      classChoices: classChoicesOf(s),
     };
   };
   const summary = (c: Course): CourseSummary => summarizeCourse(c, storage.listRuns(), installer.list());
@@ -145,6 +147,18 @@ export function registerIpc({ storage, race, installer, afs4Dir, userData }: Ipc
     if (!pick.canceled && dir) {
       storage.writeSettings({ afs4Dir: dir });
       log.info(`AFS4 user folder set to ${dir}`);
+    }
+    return appInfo();
+  });
+
+  ipcMain.handle("racer:setAircraftClass", (_e, aircraftId: unknown, classId: unknown) => {
+    const s = storage.readSettings();
+    const cls = isClassId(classId) ? classId : null;
+    if (aircraftId === null) {
+      storage.writeSettings({ noAircraftClass: cls });
+    } else if (typeof aircraftId === "string" && aircraftId.length <= 64 && !classOfAircraft(aircraftId)) {
+      const { [aircraftId]: _old, ...rest } = s.aircraftClasses;
+      storage.writeSettings({ aircraftClasses: cls ? { ...rest, [aircraftId]: cls } : rest });
     }
     return appInfo();
   });

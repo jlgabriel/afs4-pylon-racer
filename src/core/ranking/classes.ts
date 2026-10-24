@@ -70,3 +70,23 @@ export function classOfAircraft(aircraftId: string | null): AircraftClassId | nu
 export function classLabel(id: string | null): string {
   return AIRCRAFT_CLASSES.find((c) => c.id === id)?.label ?? "Unclassified";
 }
+
+export function isClassId(id: unknown): id is AircraftClassId {
+  return AIRCRAFT_CLASSES.some((c) => c.id === id);
+}
+
+/** Classes the pilot chose where the app cannot tell: aircraft it does not know (user aircraft, new
+ *  releases) and flying without an aircraft name (UDP). Built-in aircraft keep their own class. */
+export interface ClassChoices {
+  aircraft: Readonly<Record<string, string>>;
+  noAircraft: string | null;
+}
+
+export const NO_CHOICES: ClassChoices = { aircraft: {}, noAircraft: null };
+
+/** The class a run with this aircraft is ranked in; null = unclassified. */
+export function resolveClass(aircraftId: string | null, choices: ClassChoices): AircraftClassId | null {
+  if (!aircraftId) return isClassId(choices.noAircraft) ? choices.noAircraft : null;
+  const chosen = choices.aircraft[aircraftId];
+  return classOfAircraft(aircraftId) ?? (isClassId(chosen) ? chosen : null);
+}
