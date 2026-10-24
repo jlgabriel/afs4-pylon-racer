@@ -1,6 +1,6 @@
 // The race screen: timer, deltas, gate strip, next gate, map, flight values, result and the runs of
 // this course. Everything shown comes from main's live updates; nothing here judges the race.
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import type { Course, Gate, GateType } from "../../core/course/course";
 import { relativeBearing } from "../../core/geo/geo";
 import type { Fix } from "../../core/race/fix";
@@ -50,6 +50,11 @@ export function RaceView() {
   const live = update?.live && course && update.live.courseId === course.id ? update.live : null;
   const race = live?.race ?? null;
   const passed = useMemo(() => new Set(race?.passes.map((p) => p.gateIndex) ?? []), [race]);
+  // Another course opens at its top, not where the last one was scrolled to (its ranking).
+  const screen = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (screen.current) screen.current.scrollTop = 0;
+  }, [course?.id]);
 
   if (!course) {
     return <main className="race empty muted">Select a course on the left.</main>;
@@ -63,7 +68,7 @@ export function RaceView() {
   const over = race?.status === "finished" || race?.status === "dnf";
 
   return (
-    <main className="race">
+    <main className="race" ref={screen}>
       <header className="race-head">
         <div className="race-title">
           <h1 className="display">{course.name}</h1>
