@@ -40,6 +40,13 @@ Racer could ship them, Rodeo answered "You can use whatever you need." They are 
 Pylon Racer's license; each folder carries a `__CREDITS.txt` that is copied with the model into the
 scenery the app installs.
 
+## AeroflyReader.dll — Juan Luis Gabriel (MIT)
+
+`vendor/aerofly-reader/AeroflyReader.dll` is the read-only Aerofly FS 4 plug-in from
+[Aerofly-FS4-Bridge](https://github.com/jlgabriel/Aerofly-FS4-Bridge) (`simplified/`), by the author
+of Pylon Racer, under the MIT License (`vendor/aerofly-reader/LICENSE.txt`). It is not part of the
+app: each release offers it as a separate download, `AeroflyReader.zip`, with that license.
+
 ## Map data
 
 The course designer shows map tiles from **Esri World Imagery** (satellite) and **OpenStreetMap**

@@ -96,6 +96,17 @@ jobs:
           pattern: installers-*
           merge-multiple: true
 
+      # AeroflyReader.dll (MIT, from jlgabriel/Aerofly-FS4-Bridge) rides along as a zip with its license
+      # and install notes: a bare .dll download is blocked by most browsers.
+      - name: Check out the AeroflyReader plug-in
+        uses: actions/checkout@v5
+        with:
+          path: src
+          sparse-checkout: vendor/aerofly-reader
+
+      - name: Zip the AeroflyReader plug-in
+        run: zip -j dist/AeroflyReader.zip src/vendor/aerofly-reader/*
+
       # Preinstalled GitHub CLI (first-party — no third-party action holding a write token). The pushed
       # tag becomes both the release tag and its title; --generate-notes seeds the body from the commits
       # since the previous tag. Draft, so nothing goes public until you review and click Publish.

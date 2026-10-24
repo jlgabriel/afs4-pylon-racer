@@ -2,3 +2,4 @@
 * text=auto eol=lf
 *.tmb binary
 *.ttx binary
+*.dll binary

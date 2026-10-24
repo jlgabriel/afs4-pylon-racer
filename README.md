@@ -52,8 +52,10 @@ Pylon Racer reads your flight from one of two sources and uses the best one avai
 
 **UDP:** in AFS4's settings, turn on the flight-info broadcast to the network, port **49002**.
 
-**AeroflyReader.dll (optional, Windows):** copy `AeroflyReader.dll` into
-`Documents\Aerofly FS 4\external_dll\` and restart AFS4.
+**AeroflyReader.dll (optional, Windows):** download `AeroflyReader.zip` from the
+[Releases](https://github.com/jlgabriel/afs4-pylon-racer/releases) page (next to the installers),
+copy `AeroflyReader.dll` into `Documents\Aerofly FS 4\external_dll\` (create the folder if it is not
+there) and restart AFS4.
 
 The top bar shows which source is live and at what rate.
 
