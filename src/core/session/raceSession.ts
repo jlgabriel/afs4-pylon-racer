@@ -19,6 +19,8 @@ export interface LiveState {
   race: RaceSnapshot;
   fix: Fix | null;
   nextGate: { index: number; distanceM: number } | null;
+  /** The attempt was started by a demo flight: it never ranks, so it is never a "new best". */
+  demo: boolean;
 }
 
 export interface FeedResult {
@@ -49,6 +51,8 @@ export class RaceSession {
   private pilot: string;
   /** Who was flying when the race started: the run is theirs even if the pilot is switched mid-race. */
   private racePilot: string | null = null;
+  /** The source that crossed the start line. */
+  private raceSource: SourceKind | null = null;
 
   constructor(
     readonly course: Course,
@@ -70,6 +74,7 @@ export class RaceSession {
     this.startedAt = null;
     this.aircraftSeen = null;
     this.racePilot = null;
+    this.raceSource = null;
   }
 
   feed(fix: Fix, source: SourceInfo): FeedResult {
@@ -82,6 +87,7 @@ export class RaceSession {
     if (before === "waiting" && after !== "waiting") {
       this.startedAt = this.ctx.nowIso();
       this.racePilot = this.pilot;
+      this.raceSource = source.kind;
     }
     // The fix that ends a reset or a stop may be somewhere else entirely: it is not part of the track.
     const moved = events.some((e) => e.kind === "dnf" && e.reason !== "missed-gate");
@@ -113,6 +119,7 @@ export class RaceSession {
       race: this.engine.snapshot(fix?.t),
       fix,
       nextGate: gi !== null && gate && fix ? { index: gi, distanceM: haversine(fix, gate.center) } : null,
+      demo: this.raceSource === "demo",
     };
   }
 

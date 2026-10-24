@@ -41,7 +41,7 @@ export interface InstalledRef {
 export function summarizeCourse(c: Course, runs: readonly RunSummary[], installed: readonly InstalledRef[] = []): CourseSummary {
   const revision = courseRevision(c);
   const mine = runs.filter((r) => r.courseId === c.id && r.courseRevision === revision);
-  const finished = mine.filter((r) => r.status === "finished").map((r) => r.total);
+  const finished = mine.filter((r) => r.status === "finished" && r.source !== "demo").map((r) => r.total);
   const poi = installed.find((p) => p.courseId === c.id);
   return {
     install: poi

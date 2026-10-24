@@ -8,7 +8,7 @@ import type { Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine"
 import { passDelta } from "../../core/run/delta";
 import type { Run } from "../../core/run/run";
 import { classLabel } from "../../core/ranking/classes";
-import { classesOf, currentClass, leaderboard, pilotRuns } from "../../core/ranking/ranking";
+import { classesOf, currentClass, isDemo, leaderboard, pilotRuns } from "../../core/ranking/ranking";
 import type { LiveState } from "../../core/session/raceSession";
 import type { RunSummary, TelemetryStatus } from "../../shared/racerApi";
 import { KMH_PER_MS, fmtDelta, fmtDistance, fmtTime } from "../app/format";
@@ -116,7 +116,7 @@ export function RaceView() {
             </div>
           )}
 
-          {race && (race.status === "finished" || race.status === "dnf") && <Result race={race} target={targetRun} course={course} />}
+          {race && (race.status === "finished" || race.status === "dnf") && <Result race={race} target={targetRun} course={course} demo={live?.demo ?? false} />}
         </section>
 
         <section className="panel race-side">
@@ -212,13 +212,18 @@ function GateStrip({ race }: { race: RaceSnapshot | null }) {
   );
 }
 
-function Result({ race, target, course }: { race: RaceSnapshot; target: Run | null; course: Course }) {
-  const newBest = race.status === "finished" && (!target || race.total < target.result.total);
+function Result({ race, target, course, demo }: { race: RaceSnapshot; target: Run | null; course: Course; demo: boolean }) {
+  const newBest = !demo && race.status === "finished" && (!target || race.total < target.result.total);
   const why = race.status === "dnf" ? dnfText(race) : null;
   return (
     <div className="result">
       {race.status === "dnf" ? (
         <div className="result-title bad">Did not finish{why ? ` · ${why}` : ""}</div>
+      ) : demo ? (
+        <div className="result-title">
+          Demo flight <span className="muted">· not ranked</span>
+          {target && <span className="num"> {fmtDelta(race.total - target.result.total)}</span>}
+        </div>
       ) : newBest ? (
         <div className="result-title best">New best</div>
       ) : (
@@ -381,8 +386,12 @@ function Rankings() {
           </thead>
           <tbody>
             {mine.slice(0, 20).map((r, i) => (
-              <tr key={r.id} className={r.status === "dnf" ? "muted" : undefined}>
-                <td>{r.status === "dnf" ? "DNF" : i + 1}</td>
+              <tr
+                key={r.id}
+                className={r.status === "dnf" || isDemo(r) ? "muted" : undefined}
+                title={isDemo(r) ? "A demo flight: it never counts for the ranking or your best" : undefined}
+              >
+                <td>{isDemo(r) ? "Demo" : r.status === "dnf" ? "DNF" : i + 1}</td>
                 <td>
                   {fmtTime(r.total)}
                   {r.status === "dnf" && dnfShort(r.dnfReason) ? ` · ${dnfShort(r.dnfReason)}` : ""}

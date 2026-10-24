@@ -65,6 +65,18 @@ describe("the run's class", () => {
   });
 });
 
+describe("a demo attempt", () => {
+  it("is marked as one, so the screen never calls it a new best", () => {
+    const fly = (kind: "demo" | "reader") => {
+      const session = new RaceSession(munich, ctx);
+      for (const f of demoFlight(munich, { rateHz: 5 })) session.feed(f, { kind, hz: 5, aircraft: "extra330" });
+      return session.live().demo;
+    };
+    expect(fly("demo")).toBe(true);
+    expect(fly("reader")).toBe(false);
+  });
+});
+
 describe("a finished session becomes a valid run", () => {
   it("carries the course, aircraft class, source and a track", () => {
     const session = new RaceSession(munich, ctx);

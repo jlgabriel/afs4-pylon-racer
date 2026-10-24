@@ -31,7 +31,7 @@ export interface CourseSummary {
   revision: string;
   /** Length of one lap through the gate centers, meters. */
   lapLengthM: number;
-  /** The best finished total on this revision, seconds; null when none yet. */
+  /** The best finished total on this revision (demo flights aside), seconds; null when none yet. */
   bestTotal: number | null;
   runs: number;
   /** Whether its pylons are installed in AFS4, and from which revision of the course. */

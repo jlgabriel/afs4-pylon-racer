@@ -69,6 +69,17 @@ describe("ranking", () => {
     expect(leaderboard(runs, null).map((r) => [r.pilot, r.total])).toEqual([["Ana", 55]]);
   });
 
+  it("never ranks a demo flight, but keeps it last in the pilot's runs", () => {
+    const withDemo = [...runs, run({ pilot: "Juan", total: 10, source: "demo" })];
+    expect(leaderboard(withDemo, "aerobatic").map((r) => r.total)).toEqual([45, 47]);
+    expect(pilotBest(withDemo, "Juan", "aerobatic")?.total).toBe(45);
+    expect(pilotRuns(withDemo, "Juan", "aerobatic").map((r) => [r.source, r.total])).toEqual([
+      ["reader", 45],
+      ["reader", 50],
+      ["demo", 10],
+    ]);
+  });
+
   it("gives a tie to whoever flew it first", () => {
     const tie = [run({ pilot: "B", total: 40 }), run({ pilot: "A", total: 40 })];
     expect(leaderboard(tie, "aerobatic").map((r) => r.pilot)).toEqual(["B", "A"]);

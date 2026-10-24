@@ -1,6 +1,7 @@
 // Course rankings: within one course revision, runs only compare within an aircraft class. Pure,
 // shared by the renderer and tests. `null` is the "Unclassified" bucket (UDP with no class chosen,
-// aircraft the app does not know).
+// aircraft the app does not know). Demo flights are kept with the pilot's runs but never rank: the
+// synthetic aircraft would set times nobody flew.
 import type { RunSummary } from "../../shared/racerApi";
 import { rankRuns } from "../run/summaries";
 import { AIRCRAFT_CLASSES, isClassId, type AircraftClassId } from "./classes";
@@ -24,16 +25,23 @@ export function classesOf(runs: readonly RunSummary[]): ClassKey[] {
 export function leaderboard(runs: readonly RunSummary[], cls: ClassKey): RunSummary[] {
   const best = new Map<string, RunSummary>();
   for (const r of runs) {
-    if (r.status !== "finished" || classKey(r) !== cls) continue;
+    if (r.status !== "finished" || isDemo(r) || classKey(r) !== cls) continue;
     const b = best.get(r.pilot);
     if (!b || r.total < b.total || (r.total === b.total && r.startedAt < b.startedAt)) best.set(r.pilot, r);
   }
   return [...best.values()].sort((a, b) => a.total - b.total || a.startedAt.localeCompare(b.startedAt));
 }
 
-/** A pilot's runs in the class, DNFs included: finished by total, then DNFs newest first. */
+export function isDemo(r: Pick<RunSummary, "source">): boolean {
+  return r.source === "demo";
+}
+
+/** A pilot's runs in the class, DNFs included: finished by total, then DNFs newest first, then the
+ *  demo flights newest first. */
 export function pilotRuns(runs: readonly RunSummary[], pilot: string, cls: ClassKey): RunSummary[] {
-  return rankRuns(runs.filter((r) => r.pilot === pilot && classKey(r) === cls));
+  const mine = runs.filter((r) => r.pilot === pilot && classKey(r) === cls);
+  const demos = mine.filter(isDemo).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  return [...rankRuns(mine.filter((r) => !isDemo(r))), ...demos];
 }
 
 /** A pilot's best finished run in the class, or null. */
@@ -42,9 +50,9 @@ export function pilotBest(runs: readonly RunSummary[], pilot: string, cls: Class
 }
 
 /** The class to rank and race in: the one flying now if known (`undefined` = no telemetry yet),
- *  else the class of the pilot's latest run, else unclassified. */
+ *  else the class of the pilot's latest real run, else unclassified. */
 export function currentClass(runs: readonly RunSummary[], pilot: string, flying: ClassKey | undefined): ClassKey {
   if (flying !== undefined) return flying;
-  const latest = runs.filter((r) => r.pilot === pilot).reduce<RunSummary | null>((a, r) => (!a || r.startedAt > a.startedAt ? r : a), null);
+  const latest = runs.filter((r) => r.pilot === pilot && !isDemo(r)).reduce<RunSummary | null>((a, r) => (!a || r.startedAt > a.startedAt ? r : a), null);
   return latest ? classKey(latest) : null;
 }
