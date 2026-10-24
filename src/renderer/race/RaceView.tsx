@@ -29,6 +29,9 @@ const GATE_NAME: Record<GateType, string> = {
 /** The README's section on connecting AFS4 (opens in the browser). */
 const HELP_CONNECT = "https://github.com/jlgabriel/afs4-pylon-racer#connecting-to-aerofly-fs-4";
 
+/** The callsign of a new install (main/storage.ts), before the user adds their own. */
+const DEFAULT_PILOT = "Pilot";
+
 /** Penalties that mean the gate itself was not flown; the others are about HOW it was flown. */
 const GATE_LOST: ReadonlySet<PenaltyKind> = new Set(["missed-gate"]);
 
@@ -185,6 +188,7 @@ function CourseTools() {
 function ReadyList({ course, telemetry: t }: { course: Course; telemetry: TelemetryStatus | null }) {
   const summary = useStore((s) => s.courses.find((c) => c.id === course.id));
   const choices = useStore((s) => s.app?.classChoices);
+  const pilot = useStore((s) => s.app?.pilot);
   const install = summary?.install.state ?? "none";
   const start = course.gates[0];
   const cls = t?.active && choices ? resolveClass(t.aircraft, choices) : null;
@@ -217,6 +221,11 @@ function ReadyList({ course, telemetry: t }: { course: Course; telemetry: Teleme
       {t?.active && (
         <ReadyItem state={cls !== null ? "ok" : "missing"} label="Class">
           {cls !== null ? `${t.aircraft ?? "your aircraft"} · ${classLabel(cls)}` : "choose your aircraft's class in the top bar to rank your runs"}
+        </ReadyItem>
+      )}
+      {pilot === DEFAULT_PILOT && (
+        <ReadyItem state="missing" label="Pilot">
+          you are racing as "{DEFAULT_PILOT}": add your callsign with the menu at the top right
         </ReadyItem>
       )}
       {start && (
