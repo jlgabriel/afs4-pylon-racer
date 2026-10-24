@@ -1,6 +1,7 @@
 // Courses seeded so there is something to fly (or to watch in demo mode) from the first launch.
-// Two sit just north-east of EDDM (Munich); three are in the open Mojave desert at KDAG: a sprint,
-// a flight test of every rule and a flight test of Rodeo's pylons.
+// Two sit just north-east of EDDM (Munich); four are in the open Mojave desert at KDAG: a sprint,
+// a flight test of every rule, a flight test of Rodeo's pylons and an aerobatic showcase. Then a
+// Reno-style pylon oval at Reno Stead and Juan's river run at the bottom of the Grand Canyon.
 import { COURSE_FORMAT, COURSE_VERSION, parseCourse, type Course } from "../course/course";
 
 const STAMP = "2026-10-18T00:00:00Z";
@@ -103,6 +104,89 @@ export function sampleCourses(): Course[] {
         { id: "g2", type: "gate", center: { lon: 11.8635, lat: 48.399 }, widthM: 100, headingDeg: 90, pylon: "red" },
         { id: "g3", type: "gate", center: { lon: 11.877, lat: 48.39 }, widthM: 100, headingDeg: 180, pylon: "blue" },
         { id: "g4", type: "gate", center: { lon: 11.8635, lat: 48.381 }, widthM: 100, headingDeg: 270, pylon: "red" },
+      ],
+    }),
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "stead-pylon-oval",
+      name: "Stead Pylon Oval",
+      author: "Pylon Racer",
+      description:
+        "Three laps of a Reno-style pylon oval in the open desert just north of Reno Stead (KRTS), home of the Reno air races. Fly it counterclockwise and keep every pylon on your left. The start line, on the south side flown east, closes each lap: cross it below 60 m. Take off from KRTS and line up from the west: the start is on the south side of the oval, 1.5 km north of runway 8/26, flown east.",
+      createdAt: "2026-10-24T00:00:00Z",
+      updatedAt: "2026-10-24T00:00:00Z",
+      laps: 3,
+      // North of the field, clear of the hangars, the houses to the west and Swan Lake to the east;
+      // terrain 1527–1552 m (Open-Meteo), rising to the north-east. Each pylon faces the bisector of
+      // its two legs.
+      gates: [
+        { id: "g1", type: "start", center: { lon: -119.8865, lat: 39.679 }, widthM: 120, headingDeg: 90, pylon: "rodeo-25", groundElevM: 1527, topM: 60 },
+        { id: "g2", type: "turn", center: { lon: -119.874, lat: 39.6795 }, widthM: 300, headingDeg: 44, pylon: "rodeo-reno", groundElevM: 1539, turnSide: "left" },
+        { id: "g3", type: "turn", center: { lon: -119.874, lat: 39.6925 }, widthM: 300, headingDeg: 318, pylon: "rodeo-reno", groundElevM: 1552, turnSide: "left" },
+        { id: "g4", type: "turn", center: { lon: -119.8865, lat: 39.6935 }, widthM: 300, headingDeg: 270, pylon: "rodeo-reno", groundElevM: 1536, turnSide: "left" },
+        { id: "g5", type: "turn", center: { lon: -119.899, lat: 39.6925 }, widthM: 300, headingDeg: 222, pylon: "rodeo-reno", groundElevM: 1540, turnSide: "left" },
+        { id: "g6", type: "turn", center: { lon: -119.899, lat: 39.6795 }, widthM: 300, headingDeg: 136, pylon: "rodeo-reno", groundElevM: 1527, turnSide: "left" },
+      ],
+    }),
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "daggett-air-show",
+      name: "Daggett Air Show",
+      author: "Pylon Racer",
+      description:
+        "An aerobatic showcase on the flat desert 5 km north of KDAG. Westbound: wings level (2), knife edge (3), upside down (4) and a height window (5, between 15 and 40 m). Round two turn pylons, keeping them on your right (6, 7), then eastbound: above 30 m (8), upside down again (10) and a low wings-level pass below 25 m (11) to the finish. Take off on KDAG runway 26 and turn right: the start is 5 km north-west of the airport, flown west.",
+      createdAt: "2026-10-24T00:00:00Z",
+      updatedAt: "2026-10-24T00:00:00Z",
+      laps: 1,
+      // Lat 34.8965 out and 34.9105 back, 600 m between gates, terrain 582–593 m (Open-Meteo); the
+      // Calico foothills start 1 km further north.
+      gates: [
+        { id: "g1", type: "start", center: { lon: -116.8198, lat: 34.8965 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 582 },
+        { id: "g2", type: "level", center: { lon: -116.826372, lat: 34.8965 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 584 },
+        { id: "g3", type: "knife", center: { lon: -116.832944, lat: 34.8965 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 587 },
+        { id: "g4", type: "inverted", center: { lon: -116.839516, lat: 34.8965 }, widthM: 100, headingDeg: 270, pylon: null, groundElevM: 592 },
+        { id: "g5", type: "gate", center: { lon: -116.846088, lat: 34.8965 }, widthM: 100, headingDeg: 277, pylon: null, groundElevM: 593, topM: 40, bottomM: 15 },
+        { id: "g6", type: "turn", center: { lon: -116.856, lat: 34.8985 }, widthM: 250, headingDeg: 322, pylon: null, groundElevM: 593, turnSide: "right" },
+        { id: "g7", type: "turn", center: { lon: -116.856, lat: 34.9085 }, widthM: 250, headingDeg: 38, pylon: null, groundElevM: 593, turnSide: "right" },
+        { id: "g8", type: "gate", center: { lon: -116.8461, lat: 34.9105 }, widthM: 100, headingDeg: 83, pylon: null, groundElevM: 592, bottomM: 30 },
+        { id: "g9", type: "gate", center: { lon: -116.8395, lat: 34.9105 }, widthM: 100, headingDeg: 90, pylon: null, groundElevM: 592 },
+        { id: "g10", type: "inverted", center: { lon: -116.833, lat: 34.9105 }, widthM: 100, headingDeg: 90, pylon: null, groundElevM: 588 },
+        { id: "g11", type: "level", center: { lon: -116.8264, lat: 34.9105 }, widthM: 100, headingDeg: 90, pylon: null, groundElevM: 588, topM: 25 },
+        { id: "g12", type: "finish", center: { lon: -116.8198, lat: 34.9105 }, widthM: 100, headingDeg: 90, pylon: null, groundElevM: 587 },
+      ],
+    }),
+    parseCourse({
+      format: COURSE_FORMAT,
+      version: COURSE_VERSION,
+      id: "grand-canyon-west-river-run",
+      name: "Grand Canyon West River Run",
+      author: "Jugac64",
+      description:
+        "21 km along the Colorado River at the bottom of the canyon, 1,000 m below the rim. Take off from Grand Canyon West, KL37 in AFS4 (search for KL37: \"Grand Canyon\" finds KGCN, 146 km away), runway 17, turn left and descend east into the canyon: the start is on the river 3.8 km east of the airport, flown north-northwest. 7 wings level, 8 below 50 m, 9 knife edge, 13 wings level. Rodeo's pylons; they have collision in AFS4.",
+      createdAt: "2026-10-24T10:53:37.241Z",
+      // Later than Juan's own copy (same revision), so it takes the KL37 note on launch.
+      updatedAt: "2026-10-24T20:00:00Z",
+      laps: 1,
+      // Designed and flown by Juan (2026-10-24, 04:10.56). The river at 353–360 m, the rim at ~1,400 m;
+      // each gate centered on the river with cross-sections of the Open-Meteo DEM.
+      gates: [
+        { id: "g1", type: "start", center: { lon: -113.774595, lat: 35.983177 }, widthM: 100, headingDeg: 333, pylon: "rodeo-reno", groundElevM: 357 },
+        { id: "g2", type: "gate", center: { lon: -113.779531, lat: 35.996075 }, widthM: 100, headingDeg: 345, pylon: "rodeo-25", groundElevM: 352 },
+        { id: "g3", type: "gate", center: { lon: -113.782667, lat: 36.009375 }, widthM: 100, headingDeg: 0, pylon: "rodeo-18", groundElevM: 356 },
+        { id: "g4", type: "gate", center: { lon: -113.78379, lat: 36.022957 }, widthM: 100, headingDeg: 332, pylon: "rodeo-25", groundElevM: 355 },
+        { id: "g5", type: "gate", center: { lon: -113.797588, lat: 36.031203 }, widthM: 100, headingDeg: 314, pylon: "rodeo-18", groundElevM: 360 },
+        { id: "g6", type: "gate", center: { lon: -113.806329, lat: 36.042794 }, widthM: 100, headingDeg: 328, pylon: "rodeo-25", groundElevM: 354 },
+        { id: "g7", type: "level", center: { lon: -113.820151, lat: 36.048 }, widthM: 100, headingDeg: 270, pylon: "rodeo-18", groundElevM: 354 },
+        { id: "g8", type: "gate", center: { lon: -113.836838, lat: 36.048807 }, widthM: 100, headingDeg: 274, pylon: "rodeo-25", groundElevM: 354, topM: 50 },
+        { id: "g9", type: "knife", center: { lon: -113.852677, lat: 36.051192 }, widthM: 100, headingDeg: 270, pylon: "rodeo-25", groundElevM: 358 },
+        { id: "g10", type: "gate", center: { lon: -113.869058, lat: 36.05452 }, widthM: 100, headingDeg: 292, pylon: "rodeo-18", groundElevM: 355 },
+        { id: "g11", type: "gate", center: { lon: -113.882804, lat: 36.061233 }, widthM: 100, headingDeg: 321, pylon: "rodeo-25", groundElevM: 354 },
+        { id: "g12", type: "gate", center: { lon: -113.89378, lat: 36.071736 }, widthM: 100, headingDeg: 339, pylon: "rodeo-18", groundElevM: 353 },
+        { id: "g13", type: "level", center: { lon: -113.894639, lat: 36.085399 }, widthM: 100, headingDeg: 345, pylon: "rodeo-18", groundElevM: 354 },
+        { id: "g14", type: "gate", center: { lon: -113.906898, lat: 36.092404 }, widthM: 100, headingDeg: 270, pylon: "rodeo-25", groundElevM: 354 },
+        { id: "g15", type: "finish", center: { lon: -113.922547, lat: 36.097332 }, widthM: 100, headingDeg: 321, pylon: "rodeo-reno", groundElevM: 353 },
       ],
     }),
   ];
