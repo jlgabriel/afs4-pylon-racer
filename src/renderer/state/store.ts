@@ -157,7 +157,10 @@ export const useStore = create<State>((set, get) => {
       set({ bridge: true, app });
       racer.onLive((update) => {
         const fix = update.live?.fix;
-        const trail = fix ? appendTrail(get().trail, fix) : get().trail;
+        // The trail starts over at the start line: the flight out to it (taxi, take-off, the turn
+        // to line up) is not part of the race.
+        const started = get().update?.live?.race.status === "waiting" && update.live?.race.status === "running";
+        const trail = fix ? appendTrail(started ? [] : get().trail, fix) : get().trail;
         set(trail !== get().trail ? { update, trail } : { update });
         updateFlyingClass();
       });
