@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Pylon Racer — design pylon race courses for Aerofly FS 4, fly them, and race the clock and other pilots' ghosts.",
+  "description": "Pylon Racer — design pylon race courses for Aerofly FS 4, fly them, and race the clock.",
   "license": "GPL-3.0-or-later",
   "author": "Juan Luis Gabriel",
   "repository": {

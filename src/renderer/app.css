@@ -434,6 +434,7 @@
   font-size: var(--size-sm);
   max-width: 640px;
   margin-top: var(--space-1);
+  white-space: pre-line; /* keep the author's paragraphs */
 }
 .course-tools {
   display: flex;
@@ -506,7 +507,7 @@
   min-height: 0;
 }
 .designer-side {
-  width: 320px;
+  width: 360px;
   flex-shrink: 0;
   overflow-y: auto;
   padding: var(--space-3);
@@ -553,6 +554,17 @@
 }
 .field textarea {
   resize: vertical;
+}
+/* A field whose input needs the whole width: the label goes on top. */
+.field-stacked {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+.designer-desc {
+  min-height: 140px;
+  line-height: 1.45;
+  field-sizing: content; /* grows with the text, up to max-height */
+  max-height: 360px;
 }
 .check {
   display: inline-flex;

@@ -136,11 +136,13 @@ export function Designer() {
                 </label>
               </span>
             </label>
-            <label className="field">
+            <label className="field field-stacked">
               <span>Description</span>
               <textarea
-                rows={2}
-                maxLength={500}
+                className="designer-desc"
+                rows={7}
+                maxLength={2000}
+                placeholder="Where to take off, how to reach the start, what each gate asks for…"
                 value={draft.description}
                 onChange={(e) => editDraft((d) => ({ ...d, description: e.target.value }))}
               />

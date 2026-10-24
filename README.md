@@ -3,8 +3,8 @@
 Pylon racing for **Aerofly FS 4**. Pick a course, fly through its gates in order, and race the clock:
 Pylon Racer follows your flight live, times every gate, applies the penalties and keeps your runs.
 
-> **Early development.** The race engine, live telemetry, run history and the course designer work
-> today. Rankings by aircraft class, sharing, sound and the final look are on the way.
+> **Pre-1.0.** Everything below works today; the 0.x releases are polishing the look and the
+> courses on the way to 1.0.
 
 ## Design your own courses
 
@@ -25,11 +25,19 @@ Pylon Racer follows your flight live, times every gate, applies the penalties an
   between two samples, and its instant is interpolated, so times stay accurate even with the ~5 Hz UDP
   feed.
 - **Multi-lap courses**: the start line closes each lap; lap times are shown at the finish.
-- **Penalties** for missed gates and wrong-direction passes.
-- **Your runs are saved** and listed per course, best first.
+- **Rules**: wings-level and knife-edge gates, single turn pylons, a height limit per gate and pylon
+  hits, each with a penalty the course sets. The result lists every penalty and what was measured
+  ("Gate 2 · wings not level: bank 17°").
+- **Crashing or pausing ends the race** as *Did not finish*, with the clock stopped at that moment.
+- **Your runs are saved** and ranked per course and **aircraft class** (aerobatic, warbird, jet…).
+- **Several pilots on one computer**: click the callsign in the top bar to switch or add one; the
+  ranking puts them side by side.
+- **Pin on top**: keeps a compact race view above the simulator when you fly with one monitor
+  (run AFS4 windowed or borderless).
 - **Demo flight**: watch any course being flown without the simulator.
-- **Three sample courses**: *Daggett Sprint* at KDAG (take off on runway 26 and hold runway heading),
-  *Munich Sprint* and *Munich Diamond* near EDDM.
+- **Sample courses**: *Daggett Sprint* at KDAG (take off on runway 26 and hold runway heading),
+  *KDAG Rules Test* (one gate of each kind), *KDAG Rodeo Test*, and *Munich Sprint* and *Munich
+  Diamond* near EDDM.
 
 ## Sharing
 

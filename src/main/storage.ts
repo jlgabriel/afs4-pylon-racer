@@ -56,13 +56,22 @@ export class Storage {
   }
 
   /** Create the folders and seed any sample course that is missing and was not deleted by the user,
-   *  so a sample added in a new version reaches existing installs too. */
+   *  so a sample added in a new version reaches existing installs too. A sample the user never saved
+   *  takes the newer text (description, name) of the same revision; its runs stay comparable. */
   init(): void {
     mkdirSync(this.coursesDir, { recursive: true });
     mkdirSync(this.runsDir, { recursive: true });
     const removed = new Set(this.readSettings().removedSamples);
     for (const c of sampleCourses()) {
-      if (!removed.has(c.id) && !existsSync(this.courseFile(c.id))) this.writeCourse(c);
+      if (removed.has(c.id)) continue;
+      let stored: Course | null = null;
+      try {
+        stored = this.getCourse(c.id);
+      } catch {
+        continue; // unreadable: leave it for the user, never overwrite
+      }
+      if (!stored) this.writeCourse(c);
+      else if (stored.updatedAt < c.updatedAt && courseRevision(stored) === courseRevision(c)) this.writeCourse(c);
     }
   }
 
