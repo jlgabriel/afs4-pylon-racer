@@ -214,6 +214,8 @@ export function installMockBridge(): void {
       const query = new URLSearchParams(window.location.search);
       const sloppy = query.has("sloppy");
       const ranked = query.has("ranked");
+      // ?fast=8 plays the demo eight times faster (screenshots of long courses).
+      const fast = Math.max(1, Number(query.get("fast")) || 1);
       const phase = Math.random() * 2 * Math.PI;
       const warp = (t: number): number => (ranked ? t + 1.5 * Math.sin(t / 4 + phase) - 1.5 * Math.sin(phase) : t);
       const flown = demoFlight(s.course, { rateHz: 20 });
@@ -229,7 +231,7 @@ export function installMockBridge(): void {
       const t0 = performance.now() / 1000;
       let i = 0;
       demo = window.setInterval(() => {
-        const elapsed = performance.now() / 1000 - t0;
+        const elapsed = (performance.now() / 1000 - t0) * fast;
         while (i < fixes.length && fixes[i]!.t <= elapsed) {
           const f = fixes[i++]!;
           const { run } = s.feed({ ...f, t: t0 + f.t }, { kind: ranked ? "udp" : "demo", hz: 20, aircraft: demoAircraft });
