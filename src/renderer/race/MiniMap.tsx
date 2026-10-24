@@ -192,7 +192,7 @@ export function MiniMap({ course, nextGate, passed, fix, trail }: Props) {
         </g>
         {fix && !near && (
           <text x={W / 2} y={H - 22} textAnchor="middle" className="minimap-label">
-            Aircraft {(haversine(fix, ref) / 1000).toFixed(1)} km from the course
+            {farLabel(fix, course, nextGate)}
           </text>
         )}
         {trackUp && <NorthArrow rotation={rotation} />}
@@ -223,4 +223,15 @@ function NorthArrow({ rotation }: { rotation: number }) {
       </text>
     </g>
   );
+}
+
+/** Where the aircraft is while it is off the map: measured to the next gate, like "Next" says (the
+ *  course's middle gave a different number), or to the nearest gate when there is no next one. */
+function farLabel(fix: Fix, course: Course, nextGate: number | null): string {
+  const target =
+    nextGate !== null
+      ? nextGate
+      : course.gates.reduce((best, g, i) => (haversine(fix, g.center) < haversine(fix, course.gates[best]!.center) ? i : best), 0);
+  const km = (haversine(fix, course.gates[target]!.center) / 1000).toFixed(1);
+  return `Aircraft ${km} km from gate ${target + 1}`;
 }
