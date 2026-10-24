@@ -27,7 +27,8 @@ test("boots, seeds the sample courses and races a demo flight to a saved run", a
     await win.getByRole("button", { name: "Watch demo" }).click();
     await expect(win.getByText("Racing")).toBeVisible({ timeout: 15_000 });
     // 2.4 km at 80 m/s plus the lead-in: about 35 s.
-    await expect(win.getByText("New best")).toBeVisible({ timeout: 50_000 });
+    // A demo run is saved but never ranks, so it is never a new best.
+    await expect(win.getByText("· not ranked")).toBeVisible({ timeout: 50_000 });
 
     const runs = readdirSync(path.join(userData, "runs")).filter((f) => f.endsWith(".json"));
     expect(runs).toHaveLength(1);
