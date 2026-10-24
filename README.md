@@ -10,8 +10,10 @@ Pylon Racer follows your flight live, times every gate, applies the penalties an
 
 - **Course designer on a satellite map**: click to place gates, drag a gate to move it, drag its arrow
   to turn it, drag a pylon to make it wider or narrower. Search for an airport or a place to start.
-- **Gate kinds**: start, finish, gate, level gate, knife-edge gate and turn pylon (go around a single
-  pylon on the side you are told). Start and finish follow the order of the gates.
+- **Gate kinds**: start, finish, gate, level gate, knife-edge gate, inverted gate and turn pylon (go
+  around a single pylon on the side you are told). Start and finish follow the order of the gates.
+- **Height limits** per gate: a ceiling, a floor, or both (a window to fly through).
+- **Long courses**: insert a gate halfway between two with **+** in the gate list.
 - **Laps and penalties** per course.
 - **Install pylons in Aerofly FS 4 with one click**, and remove them the same way. Pylon Racer only ever
   touches the scenery folders it created. Restart AFS4 after installing to see them.
@@ -25,9 +27,11 @@ Pylon Racer follows your flight live, times every gate, applies the penalties an
   between two samples, and its instant is interpolated, so times stay accurate even with the ~5 Hz UDP
   feed.
 - **Multi-lap courses**: the start line closes each lap; lap times are shown at the finish.
-- **Rules**: wings-level and knife-edge gates, single turn pylons, a height limit per gate and pylon
-  hits, each with a penalty the course sets. The result lists every penalty and what was measured
+- **Rules**: wings-level, knife-edge and inverted gates, single turn pylons, height limits per gate and
+  pylon hits, each with a penalty the course sets. The result lists every penalty and what was measured
   ("Gate 2 · wings not level: bank 17°").
+- **Splits**: the result shows the time between every two gates against the same stretch of your best,
+  so you can see where you won or lost time.
 - **Crashing or pausing ends the race** as *Did not finish*, with the clock stopped at that moment.
 - **Your runs are saved** and ranked per course and **aircraft class** (aerobatic, warbird, jet…).
 - **Several pilots on one computer**: click the callsign in the top bar to switch or add one; the

@@ -448,6 +448,7 @@
 
 .gate-strip {
   display: flex;
+  flex-wrap: wrap; /* long, multi-lap courses take a second row */
   gap: 3px;
 }
 .gate-cell {
@@ -934,6 +935,9 @@
 .type-knife {
   --gate-color: var(--gate-knife);
 }
+.type-inverted {
+  --gate-color: var(--gate-inverted);
+}
 .type-turn {
   --gate-color: var(--gate-turn);
 }
@@ -1170,4 +1174,35 @@
 }
 .leaflet-control-layers-toggle {
   filter: invert(1); /* Leaflet's icon is drawn for a light button */
+}
+
+/* --- splits in the result --------------------------------------------------------------------- */
+.splits summary {
+  cursor: pointer;
+}
+.splits table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--size-sm);
+  margin-top: var(--space-2);
+}
+.splits th {
+  text-align: right;
+  font-weight: 600;
+  font-size: var(--size-xs);
+  color: var(--text-3);
+  padding: 2px var(--space-2);
+  border-bottom: 1px solid var(--line-strong);
+}
+.splits td {
+  text-align: right;
+  padding: 3px var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.splits th:first-child,
+.splits td:first-child {
+  text-align: left;
+}
+.splits tr.worst td {
+  background: var(--bad-soft);
 }

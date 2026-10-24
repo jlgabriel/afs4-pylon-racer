@@ -33,6 +33,7 @@ const GATE_COLOR: Record<GateType, string> = {
   gate: "var(--gate-gate)",
   level: "var(--gate-level)",
   knife: "var(--gate-knife)",
+  inverted: "var(--gate-inverted)",
   turn: "var(--gate-turn)",
 };
 

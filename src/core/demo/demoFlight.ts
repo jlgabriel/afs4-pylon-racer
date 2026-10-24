@@ -3,7 +3,8 @@
 // constant speed, with a lead-in before the start and a lead-out after the end; the bank angle is the
 // coordinated-turn bank for the heading change, so attitude-dependent screens have something to show.
 // It flies by the rules, so a demo run is clean: wings level through level gates, knife edge through
-// knife gates, turn pylons rounded on their side, and under every gate's top.
+// knife gates, upside down through inverted gates, turn pylons rounded on their side, and inside
+// every gate's height window.
 import { raceSequence, type Course } from "../course/course";
 import { destination, fromLocal, haversine, initialBearing, toLocal, wrap180, type LonLat } from "../geo/geo";
 import type { Fix } from "../race/fix";
@@ -26,6 +27,14 @@ function aimPoint(g: Course["gates"][number]): LonLat {
   if (g.type !== "turn") return g.center;
   const side = g.turnSide === "left" ? 90 : -90; // keep it on the left = fly to its right
   return destination(g.center, Math.min(g.widthM / 2, 60), g.headingDeg + side);
+}
+
+/** A height inside the gate's window: the demo's own when it fits, else the middle of the window. */
+function heightFor(g: Pick<Course["gates"][number], "topM" | "bottomM">, preferred: number): number {
+  const lo = g.bottomM ?? 0;
+  const hi = g.topM ?? Infinity;
+  if (preferred > lo && preferred < hi * 0.7) return preferred;
+  return Number.isFinite(hi) ? (lo + hi) / 2 : lo + 20;
 }
 
 export function demoFlight(course: Course, opts: DemoOptions = {}): Fix[] {
@@ -73,8 +82,9 @@ export function demoFlight(course: Course, opts: DemoOptions = {}): Fix[] {
     const turnRoll = Math.max(-80, Math.min(80, (Math.atan((speed * turnRate) / G) * 180) / Math.PI));
     const near = nearestGate(r.p);
     const atGate = near.distanceM < ATTITUDE_ZONE_M;
-    const roll = atGate && near.gate.type === "level" ? 0 : atGate && near.gate.type === "knife" ? 90 : turnRoll;
-    const agl = near.gate.topM !== null ? Math.min(height, near.gate.topM * 0.7) : height;
+    const kind = atGate ? near.gate.type : null;
+    const roll = kind === "level" ? 0 : kind === "knife" ? 90 : kind === "inverted" ? 180 : turnRoll;
+    const agl = heightFor(near.gate, height);
     return {
       t: i / rate,
       lon: r.p.lon,

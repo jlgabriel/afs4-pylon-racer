@@ -2,14 +2,14 @@
 // Course only through parseCourse() when saved. Roles stay positional, so every edit ends in
 // normalizeRoles(): the first gate is the start, and on a single-lap course the last is the finish.
 import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, rulesSchema, type Course, type Gate, type GateType } from "./course";
-import { destination, haversine, initialBearing, lerpAngle, toLocal, wrap360, type LonLat } from "../geo/geo";
+import { destination, fromLocal, haversine, initialBearing, lerpAngle, toLocal, wrap360, type LonLat } from "../geo/geo";
 
 export type Draft = Omit<Course, "gates"> & { gates: Gate[] };
 
 export const MIN_WIDTH_M = 10;
 export const DEFAULT_WIDTH_M = 80;
 /** Gate kinds the pilot chooses for a middle gate; start and finish come from the position. */
-export const MIDDLE_KINDS: readonly GateType[] = ["gate", "level", "knife", "turn"];
+export const MIDDLE_KINDS: readonly GateType[] = ["gate", "level", "knife", "inverted", "turn"];
 
 export function newDraft(id: string, author: string, nowIso: string): Draft {
   return {
@@ -66,11 +66,38 @@ export function addGate(d: Draft, at: LonLat): Draft {
     pylon: null,
     groundElevM: null,
     topM: null,
+    bottomM: null,
     turnSide: null,
   };
   // The start had nothing to face when it was placed alone: point it at the second gate.
   const before = d.gates.length === 1 ? [{ ...d.gates[0]!, headingDeg: gate.headingDeg }] : d.gates;
   return normalizeRoles({ ...d, gates: [...before, gate] });
+}
+
+/**
+ * Insert a gate halfway between this one and the next (on a multi-lap course the last gate's next
+ * is the start), facing along that leg. Null when there is no next gate to go towards: the finish.
+ */
+export function insertGateAfter(d: Draft, id: string): Draft | null {
+  const i = d.gates.findIndex((g) => g.id === id);
+  const a = d.gates[i];
+  const b = d.gates[i + 1] ?? (d.laps > 1 && d.gates.length > 1 ? d.gates[0] : undefined);
+  if (!a || !b) return null;
+  const at = fromLocal({ x: toLocal(b.center, a.center).x / 2, y: toLocal(b.center, a.center).y / 2 }, a.center);
+  const heading = haversine(a.center, b.center) > 1 ? initialBearing(a.center, b.center) : a.headingDeg;
+  const gate: Gate = {
+    id: nextGateId(d),
+    type: "gate",
+    center: at,
+    widthM: a.widthM,
+    headingDeg: Math.round(wrap360(heading)) % 360,
+    pylon: null,
+    groundElevM: null,
+    topM: null,
+    bottomM: null,
+    turnSide: null,
+  };
+  return normalizeRoles({ ...d, gates: [...d.gates.slice(0, i + 1), gate, ...d.gates.slice(i + 1)] });
 }
 
 /**

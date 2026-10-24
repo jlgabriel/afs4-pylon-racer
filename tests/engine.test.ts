@@ -279,6 +279,17 @@ describe("attitude gates", () => {
     expect(strict.snapshot().penalties).toEqual([expect.objectContaining({ kind: "attitude", seconds: 4 })]);
   });
 
+  it("an inverted gate wants the aircraft upside down, either way round", () => {
+    for (const roll of [180, -180, 165, -162]) {
+      const eng = new RaceEngine(judged({ type: "inverted" }));
+      flyAxis(eng, { rollDeg: roll });
+      expect(penaltyKinds(eng)).toEqual([]);
+    }
+    const knife = new RaceEngine(judged({ type: "inverted" }, { invertedToleranceDeg: 30 }));
+    flyAxis(knife, { rollDeg: -140 });
+    expect(knife.snapshot().penalties).toEqual([expect.objectContaining({ kind: "attitude", measured: expect.closeTo(-140, 3) })]);
+  });
+
   it("a plain gate does not judge the bank", () => {
     const eng = new RaceEngine(judged({ type: "gate" }));
     flyAxis(eng, { rollDeg: 60 });
@@ -303,6 +314,30 @@ describe("height", () => {
     const low = new RaceEngine(judged({ type: "gate", top: 30, ground: 1400 }));
     flyAxis(low, { altMslM: 1425 });
     expect(penaltyKinds(low)).toEqual([]);
+  });
+
+  it("a floor penalizes passing too low, with the course's penalty", () => {
+    const low = new RaceEngine(judged({ type: "gate", bottom: 50, ground: 1400 }, { tooLowPenaltyS: 5 }));
+    flyAxis(low, { aglM: 31 });
+    expect(low.snapshot().penalties).toEqual([
+      expect.objectContaining({ kind: "too-low", gateIndex: 1, seconds: 5, measured: expect.closeTo(31, 3) }),
+    ]);
+
+    const ok = new RaceEngine(judged({ type: "gate", bottom: 50, ground: 1400 }));
+    flyAxis(ok, { altMslM: 1460 });
+    expect(penaltyKinds(ok)).toEqual([]);
+  });
+
+  it("a height window penalizes either side of it", () => {
+    for (const [agl, kinds] of [
+      [20, ["too-low"]],
+      [60, []],
+      [120, ["too-high"]],
+    ] as const) {
+      const eng = new RaceEngine(judged({ type: "gate", bottom: 40, top: 100 }));
+      flyAxis(eng, { aglM: agl });
+      expect(penaltyKinds(eng)).toEqual(kinds);
+    }
   });
 
   it("never penalizes a height it cannot know, nor a gate without a top", () => {

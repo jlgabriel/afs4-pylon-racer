@@ -76,6 +76,18 @@ describe("revision", () => {
     expect(courseRevision(straightCourse({ rules: { pylonHeightM: 40 } }))).not.toBe(V02_STRAIGHT_REVISION);
   });
 
+  it("keeps the v0.2 revision with the v0.6 rules at their defaults and no height floors", () => {
+    expect(courseRevision(straightCourse({ rules: { tooLowPenaltyS: 2, invertedToleranceDeg: 20 } }))).toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(straightCourse({ rules: { tooLowPenaltyS: 5 } }))).not.toBe(V02_STRAIGHT_REVISION);
+    expect(courseRevision(straightCourse({ rules: { invertedToleranceDeg: 30 } }))).not.toBe(V02_STRAIGHT_REVISION);
+    const floored = makeCourse([
+      { type: "start", x: 0, y: -500, heading: 0 },
+      { type: "gate", x: 0, y: 0, heading: 0, bottom: 40 },
+      { type: "finish", x: 0, y: 500, heading: 0 },
+    ]);
+    expect(courseRevision(floored)).not.toBe(V02_STRAIGHT_REVISION);
+  });
+
   it("counts a gate's pylon model only through its height, when it differs from the course's", () => {
     const withPylon = (pylon: string, rules: Record<string, unknown> = {}) =>
       makeCourse(

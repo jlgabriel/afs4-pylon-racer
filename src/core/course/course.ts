@@ -12,7 +12,7 @@ import { pylonHeightFor } from "../export/pylons";
 export const COURSE_FORMAT = "pylon-racer/course";
 export const COURSE_VERSION = 1;
 
-export const GATE_TYPES = ["start", "finish", "gate", "level", "knife", "turn"] as const;
+export const GATE_TYPES = ["start", "finish", "gate", "level", "knife", "inverted", "turn"] as const;
 export type GateType = (typeof GATE_TYPES)[number];
 
 const lonLat = z.object({
@@ -34,6 +34,8 @@ export const gateSchema = z.object({
   groundElevM: z.number().nullable().default(null),
   /** Highest allowed pass above the terrain, meters; null = no limit. */
   topM: z.number().positive().nullable().default(null),
+  /** Lowest allowed pass above the terrain, meters; null = no limit. With topM, a height window. */
+  bottomM: z.number().positive().nullable().default(null),
   /** `turn` only: the side the pylon must be kept on. */
   turnSide: z.enum(["left", "right"]).nullable().default(null),
 });
@@ -46,10 +48,13 @@ export const rulesSchema = z.object({
   wrongDirectionPenaltyS: z.number().min(0).default(10),
   attitudePenaltyS: z.number().min(0).default(2),
   tooHighPenaltyS: z.number().min(0).default(2),
+  tooLowPenaltyS: z.number().min(0).default(2),
   pylonHitPenaltyS: z.number().min(0).default(3),
   turnCutPenaltyS: z.number().min(0).default(10),
   levelToleranceDeg: z.number().min(0).max(90).default(10),
   knifeToleranceDeg: z.number().min(0).max(90).default(15),
+  /** Inverted gates: the bank may be this far from 180°. */
+  invertedToleranceDeg: z.number().min(0).max(90).default(20),
   /** Passing closer than this to a pylon's center counts as hitting it (aircraft as a point). */
   pylonHitRadiusM: z.number().positive().default(5),
   /** Pylons are this tall: passing above it is not a hit. Only for models whose height is unknown
@@ -126,7 +131,7 @@ export function revisionInput(c: Course): string {
   // Rules added after v0.2 join the list only when they differ from their default, so the courses
   // (and the runs) of earlier versions keep their revision.
   const later = rulesSchema.parse({});
-  for (const key of ["pylonHitRadiusM", "pylonHeightM"] as const) {
+  for (const key of ["pylonHitRadiusM", "pylonHeightM", "tooLowPenaltyS", "invertedToleranceDeg"] as const) {
     if (r[key] !== later[key]) rules.push(`${key}=${r[key]}`);
   }
   const gates = c.gates.map((g) => {
@@ -144,6 +149,8 @@ export function revisionInput(c: Course): string {
     // course-wide one (so courses with krzysk1's models, of unknown height, keep their revision).
     const pylonHeightM = pylonHeightFor(g, r);
     if (pylonHeightM !== r.pylonHeightM) gate.push(`pylonHeightM=${pylonHeightM.toFixed(2)}`);
+    // Added in v0.6: only a gate that has one changes its revision.
+    if (g.bottomM !== null) gate.push(`bottomM=${g.bottomM.toFixed(2)}`);
     return gate;
   });
   return JSON.stringify({ laps: c.laps, rules, gates });

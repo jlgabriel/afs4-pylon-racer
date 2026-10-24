@@ -63,6 +63,7 @@ export function importRctCourse(data: unknown, now: string): Course {
       groundElevM: null,
       // The old tool's max_agl_m was a placeholder (80 m on every gate), never a rule.
       topM: null,
+      bottomM: null,
       turnSide: null,
     };
   });

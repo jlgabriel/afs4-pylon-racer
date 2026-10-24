@@ -10,8 +10,9 @@
 // one counts every step in between as missed.
 //
 // How a gate was passed is judged at the pass instant (interpolated):
-// - level / knife gates: the bank against the course's tolerance
-// - any gate with a top: the height above the terrain (the sim's AGL, else MSL minus the gate's DEM)
+// - level / knife / inverted gates: the bank against the course's tolerance
+// - any gate with a top or a bottom: the height above the terrain (the sim's AGL, else MSL minus the
+//   gate's DEM)
 // - pylons: flying closer than pylonHitRadiusM to a pylon's center, below its height (the model's
 //   own when known, else pylonHeightM), is a hit
 //   (once per pylon and lap); checked on every segment, not only at passes
@@ -52,7 +53,7 @@ export type RaceStatus = "waiting" | "running" | "finished" | "dnf";
 export const DNF_REASONS = ["missed-gate", "reset", "stopped"] as const;
 export type DnfReason = (typeof DNF_REASONS)[number];
 
-export const PENALTY_KINDS = ["missed-gate", "wrong-direction", "attitude", "too-high", "pylon-hit", "turn-cut"] as const;
+export const PENALTY_KINDS = ["missed-gate", "wrong-direction", "attitude", "too-high", "too-low", "pylon-hit", "turn-cut"] as const;
 export type PenaltyKind = (typeof PENALTY_KINDS)[number];
 
 export interface Penalty {
@@ -62,7 +63,7 @@ export interface Penalty {
   /** Race time (raw) at which it was assessed. */
   elapsed: number;
   seconds: number;
-  /** What was measured: bank ° (attitude), m above the terrain (too-high), m from the pylon (pylon-hit). */
+  /** What was measured: bank ° (attitude), m above the terrain (too-high, too-low), m from the pylon (pylon-hit). */
   measured: number | null;
 }
 
@@ -161,6 +162,8 @@ export function penaltySeconds(r: Rules, kind: PenaltyKind): number {
       return r.attitudePenaltyS;
     case "too-high":
       return r.tooHighPenaltyS;
+    case "too-low":
+      return r.tooLowPenaltyS;
     case "pylon-hit":
       return r.pylonHitPenaltyS;
     case "turn-cut":
@@ -415,11 +418,16 @@ export class RaceEngine {
     const events: RaceEvent[] = [];
     const bank = Math.abs(pass.rollDeg);
     const wrongAttitude =
-      (gate.type === "level" && bank > r.levelToleranceDeg) || (gate.type === "knife" && Math.abs(bank - 90) > r.knifeToleranceDeg);
+      (gate.type === "level" && bank > r.levelToleranceDeg) ||
+      (gate.type === "knife" && Math.abs(bank - 90) > r.knifeToleranceDeg) ||
+      (gate.type === "inverted" && 180 - bank > r.invertedToleranceDeg);
     if (wrongAttitude) events.push(this.addPenalty("attitude", pass.step, pass.gateIndex, at.t, pass.rollDeg));
     const height = heightAboveGround(at, gate);
     if (gate.topM !== null && height !== null && height > gate.topM) {
       events.push(this.addPenalty("too-high", pass.step, pass.gateIndex, at.t, height));
+    }
+    if (gate.bottomM !== null && height !== null && height < gate.bottomM) {
+      events.push(this.addPenalty("too-low", pass.step, pass.gateIndex, at.t, height));
     }
     return events;
   }

@@ -14,6 +14,17 @@ describe("rules text", () => {
     expect(penaltyReason(cut, rules)).toBe("turn pylon cut: passed to its left (pass to its right)");
   });
 
+  it("words the inverted gate and the height window", () => {
+    const g = { ...rules.gates[1]!, type: "inverted" as const, topM: 100, bottomM: 40 };
+    expect(gateRequirements(g, rules)).toEqual(["upside down, 180° ±20°", "between 40 m and 100 m high"]);
+    expect(gateRequirements({ ...g, type: "gate", topM: null }, rules)).toEqual(["above 40 m"]);
+    const course = { ...rules, gates: rules.gates.map((x, i) => (i === 1 ? g : x)) };
+    const low = { kind: "too-low", step: 1, gateIndex: 1, elapsed: 5, seconds: 2, measured: 31.6 } as const;
+    expect(penaltyReason(low, course)).toBe("too low: 32 m (min 40 m)");
+    const flat = { kind: "attitude", step: 1, gateIndex: 1, elapsed: 5, seconds: 2, measured: -120 } as const;
+    expect(penaltyReason(flat, course)).toBe("not upside down: bank -120° (needs 180° ±20°)");
+  });
+
   it("says why a race did not finish", () => {
     const pass = { step: 1, gateIndex: 1 } as Pass;
     expect(dnfText({ dnfReason: "reset", passes: [pass], sequence: [0, 1, 2], step: 2 })).toBe("reset in the sim after gate 2");

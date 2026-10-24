@@ -209,8 +209,13 @@ export function installMockBridge(): void {
       // ?reset crashes halfway: AFS4 puts the aircraft back on a runway 3 km away, stopped.
       // ?freeze crashes halfway too, but sits 5 s on AFS4's crash menu first, streaming the same
       // frozen fix (what the sim really does unless the pilot picks an option right away).
+      // ?ranked feeds the demo as if it came from the sim, so its runs rank and become your best, at
+      // a pace that wanders from run to run (to see the live delta and the splits against the best).
       const query = new URLSearchParams(window.location.search);
       const sloppy = query.has("sloppy");
+      const ranked = query.has("ranked");
+      const phase = Math.random() * 2 * Math.PI;
+      const warp = (t: number): number => (ranked ? t + 1.5 * Math.sin(t / 4 + phase) - 1.5 * Math.sin(phase) : t);
       const flown = demoFlight(s.course, { rateHz: 20 });
       const runway = destination(flown[0]!, 3000, 180);
       const crash = Math.floor(flown.length / 2);
@@ -218,7 +223,8 @@ export function installMockBridge(): void {
       const fixes = flown.map((f, i) => {
         if ((query.has("reset") || menu) && i > crash + menu) return { ...f, ...runway, gsMs: 0, aglM: 0, rollDeg: 0, pitchDeg: 0 };
         if (menu && i > crash) return { ...flown[crash]!, t: f.t };
-        return sloppy ? { ...f, rollDeg: f.rollDeg + 35, altMslM: f.altMslM + 30, aglM: f.aglM === null ? null : f.aglM + 30 } : f;
+        const g = { ...f, t: warp(f.t) };
+        return sloppy ? { ...g, rollDeg: g.rollDeg + 35, altMslM: g.altMslM + 30, aglM: g.aglM === null ? null : g.aglM + 30 } : g;
       });
       const t0 = performance.now() / 1000;
       let i = 0;
@@ -226,7 +232,7 @@ export function installMockBridge(): void {
         const elapsed = performance.now() / 1000 - t0;
         while (i < fixes.length && fixes[i]!.t <= elapsed) {
           const f = fixes[i++]!;
-          const { run } = s.feed({ ...f, t: t0 + f.t }, { kind: "demo", hz: 20, aircraft: demoAircraft });
+          const { run } = s.feed({ ...f, t: t0 + f.t }, { kind: ranked ? "udp" : "demo", hz: 20, aircraft: demoAircraft });
           if (run) {
             runs.set(run.id, run);
             savedListeners.forEach((l) => l(summarizeRun(run)));

@@ -6,6 +6,7 @@ import { relativeBearing } from "../../core/geo/geo";
 import type { Fix } from "../../core/race/fix";
 import type { Penalty, PenaltyKind, RaceSnapshot } from "../../core/race/engine";
 import { passDelta } from "../../core/run/delta";
+import { splits } from "../../core/run/splits";
 import { lapLength } from "../../core/run/summaries";
 import type { Run } from "../../core/run/run";
 import { classLabel, resolveClass } from "../../core/ranking/classes";
@@ -23,6 +24,7 @@ const GATE_NAME: Record<GateType, string> = {
   gate: "Gate",
   level: "Level gate",
   knife: "Knife-edge gate",
+  inverted: "Inverted gate",
   turn: "Turn pylon",
 };
 
@@ -344,7 +346,51 @@ function Result({ race, target, course, demo }: { race: RaceSnapshot; target: Ru
           {race.lapTimes.map((t, i) => `Lap ${i + 1} ${fmtTime(t)}`).join("   ")}
         </div>
       )}
+      {race.passes.length > 2 && <Splits race={race} target={target} />}
     </div>
+  );
+}
+
+/** The time between gates, against the same stretch of your best: where time was won or lost. */
+function Splits({ race, target }: { race: RaceSnapshot; target: Run | null }) {
+  const rows = splits(race.passes, race.penalties, target).slice(1);
+  const deltas = rows.map((r) => r.sectorDelta).filter((d): d is number => d !== null);
+  const worst = deltas.length > 1 ? Math.max(...deltas) : null;
+  const bestGain = deltas.length > 1 ? Math.min(...deltas) : null;
+  return (
+    <details className="splits" open={rows.length <= 12}>
+      <summary className="label">Splits{target ? " · against your best" : ""}</summary>
+      <table className="num">
+        <thead>
+          <tr>
+            <th>Gate</th>
+            <th>At</th>
+            <th>Sector</th>
+            {target && <th>± best</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.step} className={r.sectorDelta !== null && r.sectorDelta === worst && worst > 0 ? "worst" : undefined}>
+              <td>
+                {r.gateIndex + 1}
+                {race.laps > 1 ? <span className="muted"> · lap {r.lap}</span> : null}
+              </td>
+              <td>{fmtTime(r.elapsed)}</td>
+              <td>
+                {r.sector.toFixed(2)}
+                {r.penalties > 0 && <span className="bad"> (+{r.penalties.toFixed(0)})</span>}
+              </td>
+              {target && (
+                <td className={r.sectorDelta === null ? "muted" : r.sectorDelta < 0 ? (r.sectorDelta === bestGain ? "best" : "good") : "bad"}>
+                  {r.sectorDelta === null ? "—" : fmtDelta(r.sectorDelta)}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }
 

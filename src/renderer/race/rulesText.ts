@@ -18,8 +18,11 @@ export function gateRequirements(g: Gate, course: Course): string[] {
   const out: string[] = [];
   if (g.type === "level") out.push(`wings level, ±${deg(r.levelToleranceDeg)}`);
   if (g.type === "knife") out.push(`knife edge, 90° ±${deg(r.knifeToleranceDeg)}`);
+  if (g.type === "inverted") out.push(`upside down, 180° ±${deg(r.invertedToleranceDeg)}`);
   if (g.type === "turn") out.push(`pass to the ${passSide(g)} of the pylon`);
-  if (g.topM !== null) out.push(`below ${m(g.topM)}`);
+  if (g.topM !== null && g.bottomM !== null) out.push(`between ${m(g.bottomM)} and ${m(g.topM)} high`);
+  else if (g.topM !== null) out.push(`below ${m(g.topM)}`);
+  else if (g.bottomM !== null) out.push(`above ${m(g.bottomM)}`);
   return out;
 }
 
@@ -34,9 +37,12 @@ export function penaltyReason(p: Penalty, course: Course): string {
       return "flown the wrong way";
     case "attitude":
       if (g?.type === "knife") return `not knife edge: bank ${measured(p, deg)} (needs 90° ±${deg(r.knifeToleranceDeg)})`;
+      if (g?.type === "inverted") return `not upside down: bank ${measured(p, deg)} (needs 180° ±${deg(r.invertedToleranceDeg)})`;
       return `wings not level: bank ${measured(p, deg)} (max ±${deg(r.levelToleranceDeg)})`;
     case "too-high":
       return `too high: ${measured(p, m)}${g?.topM != null ? ` (max ${m(g.topM)})` : ""}`;
+    case "too-low":
+      return `too low: ${measured(p, m)}${g?.bottomM != null ? ` (min ${m(g.bottomM)})` : ""}`;
     case "pylon-hit":
       return `pylon hit: ${p.measured !== null ? `${p.measured.toFixed(1)} m` : "?"} from its center`;
     case "turn-cut":

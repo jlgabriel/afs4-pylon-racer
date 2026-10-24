@@ -4,6 +4,7 @@ import {
   addGate,
   draftProblem,
   headingFromHandle,
+  insertGateAfter,
   moveGate,
   moveGateInOrder,
   newDraft,
@@ -13,7 +14,7 @@ import {
   suggestedHeading,
   widthFromPylon,
 } from "../src/core/course/edit";
-import { destination } from "../src/core/geo/geo";
+import { destination, haversine } from "../src/core/geo/geo";
 import { makeCourse } from "./helpers";
 
 const at = (x: number) => destination({ lon: -116.8, lat: 34.85 }, x, 270);
@@ -68,6 +69,24 @@ describe("building a course on the map", () => {
     expect(d.gates[1]).toMatchObject({ type: "turn", turnSide: "left" });
     d = setKind(d, mid, "knife");
     expect(d.gates[1]).toMatchObject({ type: "knife", turnSide: null });
+  });
+
+  it("inserts a gate halfway along a leg, facing along it", () => {
+    const d = threeGates();
+    const e = insertGateAfter(d, d.gates[0]!.id)!;
+    expect(e.gates.map((g) => g.type)).toEqual(["start", "gate", "gate", "finish"]);
+    expect(haversine(e.gates[1]!.center, at(300))).toBeLessThan(0.5);
+    expect(e.gates[1]).toMatchObject({ headingDeg: 270, widthM: d.gates[0]!.widthM, groundElevM: null });
+    expect(new Set(e.gates.map((g) => g.id)).size).toBe(4);
+  });
+
+  it("inserts nothing after the finish, but closes the lap on a multi-lap course", () => {
+    const d = threeGates();
+    expect(insertGateAfter(d, d.gates[2]!.id)).toBeNull();
+    const loop = insertGateAfter(setLaps(d, 2), d.gates[2]!.id)!;
+    expect(loop.gates).toHaveLength(4);
+    expect(haversine(loop.gates[3]!.center, at(600))).toBeLessThan(0.5);
+    expect(loop.gates[3]!.headingDeg).toBe(90);
   });
 
   it("moving a gate forgets its terrain elevation", () => {

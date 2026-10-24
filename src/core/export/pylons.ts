@@ -43,6 +43,7 @@ export const DEFAULT_PYLON: Record<GateType, string> = {
   gate: "red",
   level: "blue",
   knife: "rgb",
+  inverted: "rb",
   turn: "home2",
 };
 

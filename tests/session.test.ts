@@ -6,7 +6,7 @@ import { sampleCourses } from "../src/core/demo/sampleCourses";
 import { haversine } from "../src/core/geo/geo";
 import { parseRun, Recorder, TRACK_FIELDS, type Run } from "../src/core/run/run";
 import { RaceSession, type SessionContext } from "../src/core/session/raceSession";
-import { fixAt } from "./helpers";
+import { fixAt, makeCourse } from "./helpers";
 
 const munich = importRctCourse(
   JSON.parse(readFileSync(new URL("fixtures/munich_multicolor.json", import.meta.url), "utf8")),
@@ -33,6 +33,21 @@ describe("the demo flight", () => {
     expect(run!.result.status).toBe("finished");
     expect(run!.result.penaltyTotal).toBe(0);
     expect(run!.result.raw).toBeCloseTo(haversine(start, finish) / 80, 1);
+  });
+
+  it("flies upside down through inverted gates and inside every height window", () => {
+    const course = makeCourse([
+      { type: "start", x: 0, y: -800, heading: 0, ground: 1000 },
+      { type: "inverted", x: 0, y: -400, heading: 0, ground: 1000 },
+      { type: "gate", x: 0, y: 0, heading: 0, ground: 1000, bottom: 60, top: 90 },
+      { type: "level", x: 0, y: 400, heading: 0, ground: 1000, bottom: 15 },
+      { type: "finish", x: 0, y: 800, heading: 0, ground: 1000, top: 20 },
+    ]);
+    const session = new RaceSession(course, ctx);
+    let run = null;
+    for (const f of demoFlight(course, { rateHz: 10 })) run = session.feed(f, { kind: "demo", hz: 10, aircraft: null }).run ?? run;
+    expect(run?.result.status).toBe("finished");
+    expect(run?.penalties).toEqual([]);
   });
 });
 

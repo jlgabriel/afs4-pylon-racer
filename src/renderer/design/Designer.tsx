@@ -6,6 +6,7 @@ import {
   MIDDLE_KINDS,
   addGate,
   draftProblem,
+  insertGateAfter,
   moveGate,
   moveGateInOrder,
   removeGate,
@@ -27,6 +28,7 @@ const KIND_LABEL: Record<GateType, string> = {
   gate: "Gate",
   level: "Level gate",
   knife: "Knife-edge gate",
+  inverted: "Inverted gate",
   turn: "Turn pylon",
 };
 
@@ -161,7 +163,7 @@ export function Designer() {
           <RulesPanel rules={draft.rules} edit={(patch) => editDraft((d) => ({ ...d, rules: { ...d.rules, ...patch } }))} />
 
           <section className="panel designer-gates">
-            <div className="label">Gates · click the map to add</div>
+            <div className="label">Gates · click the map to add one at the end, + to insert</div>
             {draft.gates.length === 0 && <div className="muted">No gates yet.</div>}
             <ol>
               {draft.gates.map((g, i) => (
@@ -172,6 +174,12 @@ export function Designer() {
                   count={draft.gates.length}
                   suggested={suggestedHeading(draft, g.id)}
                   selected={g.id === selectedGateId}
+                  canInsert={i < draft.gates.length - 1 || draft.laps > 1}
+                  onInsert={() => {
+                    editDraft((d) => insertGateAfter(d, g.id) ?? d);
+                    const added = useStore.getState().draft?.gates[i + 1];
+                    if (added) focusGate(added.id);
+                  }}
                   onSelect={() => focusGate(g.id)}
                   edit={(fn) => editDraft(fn)}
                 />
@@ -191,11 +199,14 @@ interface RowProps {
   /** The heading halfway between the legs in and out (suggestedHeading). */
   suggested: number | null;
   selected: boolean;
+  /** Whether a gate can go between this one and the next (not after the finish). */
+  canInsert: boolean;
+  onInsert(): void;
   onSelect(): void;
   edit(fn: (d: Draft) => Draft): void;
 }
 
-function GateRow({ gate: g, index, count, suggested, selected, onSelect, edit }: RowProps) {
+function GateRow({ gate: g, index, count, suggested, selected, canInsert, onInsert, onSelect, edit }: RowProps) {
   const positional = g.type === "start" || g.type === "finish";
   return (
     <li className={`gate-row ${selected ? "selected" : ""}`} onClick={onSelect}>
@@ -205,6 +216,17 @@ function GateRow({ gate: g, index, count, suggested, selected, onSelect, edit }:
           {index + 1} · {KIND_LABEL[g.type]}
         </span>
         <span className="gate-row-tools">
+          <button
+            disabled={!canInsert}
+            onClick={(e) => {
+              e.stopPropagation();
+              onInsert();
+            }}
+            aria-label="Insert a gate after this one"
+            title="Insert a gate halfway to the next one"
+          >
+            +
+          </button>
           <button disabled={index === 0} onClick={() => edit((d) => moveGateInOrder(d, g.id, -1))} aria-label="Move earlier">
             ▲
           </button>
@@ -276,6 +298,23 @@ function GateRow({ gate: g, index, count, suggested, selected, onSelect, edit }:
             </span>
           </label>
           <label className="field">
+            <span>Min height</span>
+            <span className="field-inline">
+              <input
+                type="number"
+                min={1}
+                step={5}
+                placeholder="none"
+                value={g.bottomM ?? ""}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  edit((d) => updateGate(d, g.id, { bottomM: e.target.value === "" || !(v > 0) ? null : v }));
+                }}
+              />
+              <span className="muted">m above ground</span>
+            </span>
+          </label>
+          <label className="field">
             <span>Max height</span>
             <span className="field-inline">
               <input
@@ -319,7 +358,9 @@ const RULE_FIELDS: { key: NumericRule; label: string; unit: string; min?: number
   { key: "attitudePenaltyS", label: "Wrong attitude", unit: "s" },
   { key: "levelToleranceDeg", label: "Level within", unit: "° of bank", max: 90 },
   { key: "knifeToleranceDeg", label: "Knife edge within", unit: "° of 90°", max: 90 },
+  { key: "invertedToleranceDeg", label: "Inverted within", unit: "° of 180°", max: 90 },
   { key: "tooHighPenaltyS", label: "Too high", unit: "s" },
+  { key: "tooLowPenaltyS", label: "Too low", unit: "s" },
   { key: "pylonHitPenaltyS", label: "Pylon hit", unit: "s" },
   { key: "pylonHitRadiusM", label: "Hit within", unit: "m of a pylon", min: 0.5 },
   { key: "pylonHeightM", label: "Pylon height", unit: "m, unless the model has its own", min: 1 },

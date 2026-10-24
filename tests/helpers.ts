@@ -15,6 +15,8 @@ export interface GateSpec {
   turnSide?: "left" | "right";
   /** Highest allowed pass above the terrain, m. */
   top?: number;
+  /** Lowest allowed pass above the terrain, m. */
+  bottom?: number;
   /** Terrain elevation at the gate, m MSL. */
   ground?: number;
   /** Pylon model id. */
@@ -37,6 +39,7 @@ export function makeCourse(gates: GateSpec[], extra: Record<string, unknown> = {
       headingDeg: g.heading,
       turnSide: g.turnSide ?? null,
       topM: g.top ?? null,
+      bottomM: g.bottom ?? null,
       groundElevM: g.ground ?? null,
       pylon: g.pylon ?? null,
     })),
