@@ -5,6 +5,7 @@
 import { courseRevision, parseCourse, type Course } from "../../core/course/course";
 import { demoFlight } from "../../core/demo/demoFlight";
 import { sampleCourses } from "../../core/demo/sampleCourses";
+import { planPoi } from "../../core/export/poi";
 import { courseFileName, packCourse, unpack } from "../../core/files/share";
 import type { ZipCodec } from "../../core/files/zip";
 import { destination } from "../../core/geo/geo";
@@ -47,11 +48,11 @@ export function installMockBridge(): void {
   const demoAircraft = aircraftParam === "none" ? null : (aircraftParam ?? "extra330");
   let session: RaceSession | null = null;
   let demo: number | null = null;
-  /** courseId → installed revision: a pretend scenery/poi/. */
-  const installed = new Map<string, string>();
+  /** courseId → what was installed: a pretend scenery/poi/. */
+  const installed = new Map<string, { revision: string; sceneryId: string }>();
 
   const summaries = (): RunSummary[] => [...runs.values()].map((r) => summarizeRun(r));
-  const installedRefs = () => [...installed].map(([courseId, revision]) => ({ courseId, revision, folderName: `mock_${courseId}` }));
+  const installedRefs = () => [...installed].map(([courseId, i]) => ({ courseId, ...i, folderName: `mock_${courseId}` }));
   const summary = (c: Course) => summarizeCourse(c, summaries(), installedRefs());
   const info = (): AppInfo => ({
     version: __APP_VERSION__,
@@ -140,7 +141,7 @@ export function installMockBridge(): void {
     installCourse: async (id) => {
       const c = courses.get(id);
       if (!c) return notFound(id);
-      installed.set(id, courseRevision(c));
+      installed.set(id, { revision: courseRevision(c), sceneryId: planPoi(c).sceneryId });
       return ok(summary(c));
     },
     uninstallCourse: async (id) => {

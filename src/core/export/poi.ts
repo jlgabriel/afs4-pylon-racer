@@ -5,7 +5,7 @@
 // AFS4 only loads a POI whose folder name starts with the coordinates of the place, encoded as
 // e/w + |lon|×100 (5 digits) + n/s + |lat|×100 (4 digits), e.g. "e01185n4838_…". A wrong or
 // missing prefix fails silently: the objects never appear.
-import type { Course } from "../course/course";
+import { fnv1a64, type Course } from "../course/course";
 import { centroid, pylonsOfGate, type LonLat } from "../geo/geo";
 import { pylonFor } from "./pylons";
 
@@ -52,6 +52,9 @@ export interface PoiPlan {
   /** Pylon model folders to copy next to the .tsl. */
   modelDirs: string[];
   pylonCount: number;
+  /** Changes whenever a pylon moves or changes model, even when the course revision does not (a
+   *  model of the same height): the installed folder is then out of date. The name is left out. */
+  sceneryId: string;
 }
 
 export interface PoiMarker {
@@ -59,6 +62,8 @@ export interface PoiMarker {
   courseId: string;
   courseName: string;
   revision: string;
+  /** PoiPlan.sceneryId of what was installed; absent in folders installed before v0.4. */
+  sceneryId?: string;
   installedAt: string;
   appVersion: string;
 }
@@ -115,5 +120,6 @@ export function planPoi(course: Course): PoiPlan {
     tsl,
     modelDirs: [...dirs].sort(),
     pylonCount: objects.length,
+    sceneryId: fnv1a64(blocks.join("")),
   };
 }

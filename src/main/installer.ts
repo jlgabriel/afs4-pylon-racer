@@ -19,6 +19,7 @@ const markerSchema = z.object({
   courseId: z.string(),
   courseName: z.string(),
   revision: z.string(),
+  sceneryId: z.string().optional(),
   installedAt: z.string(),
   appVersion: z.string(),
 });
@@ -95,6 +96,7 @@ export class Installer {
         courseId: course.id,
         courseName: course.name,
         revision: courseRevision(course),
+        sceneryId: plan.sceneryId,
         installedAt: new Date().toISOString(),
         appVersion: this.appVersion,
       };

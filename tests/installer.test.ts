@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { courseRevision } from "../src/core/course/course";
 import { sampleCourses } from "../src/core/demo/sampleCourses";
 import { MARKER_FILE } from "../src/core/export/poi";
+import { summarizeCourse } from "../src/core/run/summaries";
 import { Afs4NotFoundError, Installer } from "../src/main/installer";
 
 const ASSETS = path.resolve(import.meta.dirname, "..", "assets", "pylons");
@@ -44,6 +45,26 @@ describe("installing a course", () => {
       ["__CREDITS.txt", "pylon_air_race.ttx", "pylon_air_race_18_4.tmb"].sort(),
     );
     expect(readdirSync(path.join(dir, "rodeo_reno_3")).sort()).toEqual(["__CREDITS.txt", "pylon_reno.ttx", "pylon_reno_3.tmb"].sort());
+  });
+
+  it("is out of date when a pylon model changed, even one of the same height", () => {
+    installer.install(sprint);
+    const state = (c: typeof sprint) => summarizeCourse(c, [], installer.list()).install.state;
+    expect(state(sprint)).toBe("current");
+    // Red → Rodeo 25 m: the course's own pylon height is 25 m, so the revision does not change.
+    const swapped = { ...sprint, gates: sprint.gates.map((g, i) => (i === 1 ? { ...g, pylon: "rodeo-25" } : g)) };
+    expect(courseRevision(swapped)).toBe(courseRevision(sprint));
+    expect(state(swapped)).toBe("outdated");
+    expect(state({ ...sprint, name: "Renamed" })).toBe("current");
+  });
+
+  it("trusts the revision alone for folders installed before the scenery id existed", () => {
+    const dir = path.join(poi, installer.install(sprint).folderName);
+    const marker = JSON.parse(readFileSync(path.join(dir, MARKER_FILE), "utf8"));
+    delete marker.sceneryId;
+    writeFileSync(path.join(dir, MARKER_FILE), JSON.stringify(marker));
+    const swapped = { ...sprint, gates: sprint.gates.map((g, i) => (i === 1 ? { ...g, pylon: "rodeo-25" } : g)) };
+    expect(summarizeCourse(swapped, [], installer.list()).install.state).toBe("current");
   });
 
   it("leaves no staging folder behind", () => {

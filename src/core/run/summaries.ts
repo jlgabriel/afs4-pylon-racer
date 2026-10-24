@@ -1,5 +1,6 @@
 // Small views over courses and runs for lists. Pure, shared by main and the preview's mock bridge.
 import { courseRevision, raceSequence, type Course } from "../course/course";
+import { planPoi } from "../export/poi";
 import { haversine } from "../geo/geo";
 import type { CourseSummary, RunSummary } from "../../shared/racerApi";
 import type { Run } from "./run";
@@ -35,6 +36,8 @@ export function lapLength(c: Course): number {
 export interface InstalledRef {
   courseId: string;
   revision: string;
+  /** What was installed (PoiPlan.sceneryId); absent for folders of earlier versions. */
+  sceneryId?: string;
   folderName: string;
 }
 
@@ -45,7 +48,7 @@ export function summarizeCourse(c: Course, runs: readonly RunSummary[], installe
   const poi = installed.find((p) => p.courseId === c.id);
   return {
     install: poi
-      ? { state: poi.revision === revision ? "current" : "outdated", folderName: poi.folderName }
+      ? { state: isCurrent(poi, c, revision) ? "current" : "outdated", folderName: poi.folderName }
       : { state: "none", folderName: null },
     id: c.id,
     name: c.name,
@@ -57,6 +60,12 @@ export function summarizeCourse(c: Course, runs: readonly RunSummary[], installe
     bestTotal: finished.length > 0 ? Math.min(...finished) : null,
     runs: mine.length,
   };
+}
+
+/** The installed pylons match the course: same revision and, when the folder says, the same pylons
+ *  (a model swapped for one of the same height keeps the revision but not the scenery). */
+function isCurrent(poi: InstalledRef, c: Course, revision: string): boolean {
+  return poi.revision === revision && (poi.sceneryId === undefined || poi.sceneryId === planPoi(c).sceneryId);
 }
 
 /** Runs of a course revision, best first: finished by total, then DNFs by date. */
