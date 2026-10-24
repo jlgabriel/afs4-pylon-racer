@@ -2,7 +2,7 @@
 // Course only through parseCourse() when saved. Roles stay positional, so every edit ends in
 // normalizeRoles(): the first gate is the start, and on a single-lap course the last is the finish.
 import { COURSE_FORMAT, COURSE_VERSION, gateRoleProblem, rulesSchema, type Course, type Gate, type GateType } from "./course";
-import { destination, haversine, initialBearing, toLocal, wrap360, type LonLat } from "../geo/geo";
+import { destination, haversine, initialBearing, lerpAngle, toLocal, wrap360, type LonLat } from "../geo/geo";
 
 export type Draft = Omit<Course, "gates"> & { gates: Gate[] };
 
@@ -71,6 +71,25 @@ export function addGate(d: Draft, at: LonLat): Draft {
   // The start had nothing to face when it was placed alone: point it at the second gate.
   const before = d.gates.length === 1 ? [{ ...d.gates[0]!, headingDeg: gate.headingDeg }] : d.gates;
   return normalizeRoles({ ...d, gates: [...before, gate] });
+}
+
+/**
+ * The heading a pilot flies through this gate on the way from the previous one to the next: the
+ * bisector of the two legs, so neither turn is left too tight (Juan circled twice on a corner of
+ * "KDAG from runway 4" whose gate faced the leg in). The start faces the first leg and the finish
+ * the last; on a multi-lap course the start line also closes the lap. Null with fewer than 2 gates.
+ */
+export function suggestedHeading(d: Pick<Draft, "gates" | "laps">, id: string): number | null {
+  const i = d.gates.findIndex((g) => g.id === id);
+  if (i < 0 || d.gates.length < 2) return null;
+  const loop = d.laps > 1;
+  const at = d.gates[i]!.center;
+  const prev = d.gates[i - 1] ?? (loop ? d.gates[d.gates.length - 1] : undefined);
+  const next = d.gates[i + 1] ?? (loop ? d.gates[0] : undefined);
+  const legIn = prev && haversine(prev.center, at) > 1 ? initialBearing(prev.center, at) : null;
+  const legOut = next && haversine(at, next.center) > 1 ? initialBearing(at, next.center) : null;
+  const h = legIn !== null && legOut !== null ? lerpAngle(legIn, legOut, 0.5) : (legIn ?? legOut);
+  return h === null ? null : Math.round(wrap360(h)) % 360;
 }
 
 export function updateGate(d: Draft, id: string, patch: Partial<Gate>): Draft {

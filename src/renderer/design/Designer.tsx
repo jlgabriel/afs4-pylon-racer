@@ -11,6 +11,7 @@ import {
   removeGate,
   setKind,
   setLaps,
+  suggestedHeading,
   updateGate,
   type Draft,
 } from "../../core/course/edit";
@@ -167,6 +168,7 @@ export function Designer() {
                   gate={g}
                   index={i}
                   count={draft.gates.length}
+                  suggested={suggestedHeading(draft, g.id)}
                   selected={g.id === selectedGateId}
                   onSelect={() => focusGate(g.id)}
                   edit={(fn) => editDraft(fn)}
@@ -184,12 +186,14 @@ interface RowProps {
   gate: Gate;
   index: number;
   count: number;
+  /** The heading halfway between the legs in and out (suggestedHeading). */
+  suggested: number | null;
   selected: boolean;
   onSelect(): void;
   edit(fn: (d: Draft) => Draft): void;
 }
 
-function GateRow({ gate: g, index, count, selected, onSelect, edit }: RowProps) {
+function GateRow({ gate: g, index, count, suggested, selected, onSelect, edit }: RowProps) {
   const positional = g.type === "start" || g.type === "finish";
   return (
     <li className={`gate-row ${selected ? "selected" : ""}`} onClick={onSelect}>
@@ -258,6 +262,15 @@ function GateRow({ gate: g, index, count, selected, onSelect, edit }: RowProps) 
                 onChange={(e) => edit((d) => updateGate(d, g.id, { headingDeg: ((Math.round(Number(e.target.value) || 0) % 360) + 360) % 360 }))}
               />
               <span className="muted">°</span>
+              {suggested !== null && (
+                <button
+                  disabled={suggested === g.headingDeg}
+                  title={`Face halfway between the leg in and the leg out (${suggested}°), so neither turn is too tight`}
+                  onClick={() => edit((d) => updateGate(d, g.id, { headingDeg: suggested }))}
+                >
+                  Align
+                </button>
+              )}
             </span>
           </label>
           <label className="field">

@@ -10,9 +10,11 @@ import {
   removeGate,
   setKind,
   setLaps,
+  suggestedHeading,
   widthFromPylon,
 } from "../src/core/course/edit";
 import { destination } from "../src/core/geo/geo";
+import { makeCourse } from "./helpers";
 
 const at = (x: number) => destination({ lon: -116.8, lat: 34.85 }, x, 270);
 
@@ -88,5 +90,41 @@ describe("handles", () => {
     const p = destination(destination(center, 50, 90), 30, 0);
     expect(widthFromPylon(center, 0, p)).toBe(100);
     expect(widthFromPylon(center, 0, destination(center, 2, 90))).toBe(10);
+  });
+});
+
+describe("the suggested heading", () => {
+  // North 500 m to a corner, then 500 m east.
+  const corner = makeCourse([
+    { type: "start", x: 0, y: -500, heading: 0 },
+    { type: "gate", x: 0, y: 0, heading: 0 },
+    { type: "finish", x: 500, y: 0, heading: 90 },
+  ]);
+
+  it("splits a corner between the leg in and the leg out", () => {
+    expect(suggestedHeading(corner, "g2")).toBe(45);
+  });
+
+  it("faces the first leg at the start and the last one at the finish", () => {
+    expect(suggestedHeading(corner, "g1")).toBe(0);
+    expect(suggestedHeading(corner, "g3")).toBe(90);
+  });
+
+  it("closes the lap through the start on a multi-lap course", () => {
+    // A triangle flown clockwise: start at the bottom left, up to the top, down to the right.
+    const loop = makeCourse(
+      [
+        { type: "start", x: 0, y: 0, heading: 0 },
+        { type: "gate", x: 0, y: 500, heading: 90 },
+        { type: "gate", x: 500, y: 0, heading: 270 },
+      ],
+      { laps: 2 },
+    );
+    // In along the bottom leg, westwards (270°), and out to the north (0°): halfway is 315.
+    expect(suggestedHeading(loop, "g1")).toBe(315);
+  });
+
+  it("has nothing to suggest for an unknown gate", () => {
+    expect(suggestedHeading(corner, "nope")).toBeNull();
   });
 });
