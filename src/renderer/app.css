@@ -812,9 +812,17 @@
 .app.pinned .race-head {
   justify-content: flex-end;
 }
-/* Smaller still: the map and the flight values alone (the voice says what each gate asks for). */
+/* Smaller still: a compact race panel (time, deltas, next gate with its turn arrow) over the map.
+ * Without a voice, the next gate is the only place that says where to go and what it asks for. */
 @media (max-width: 560px) {
   .app.pinned .race-main {
+    gap: var(--space-1);
+  }
+  .app.pinned .race-main > .label,
+  .app.pinned .gate-strip {
     display: none;
+  }
+  .app.pinned .timer {
+    font-size: calc(var(--size-timer) * 0.6);
   }
 }
